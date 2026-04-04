@@ -1,0 +1,28 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# ---------- System packages (curl for Qdrant health check) -------------------
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# ---------- Python dependencies -----------------------------------------------
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ---------- Application code --------------------------------------------------
+COPY . .
+
+# ---------- Pre-download sentence-transformers models -------------------------
+RUN python -c "\
+from sentence_transformers import SentenceTransformer, CrossEncoder; \
+SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2'); \
+CrossEncoder('cross-encoder/mmarco-mMiniLMv2-L12-H384-v1')"
+
+# ---------- Entrypoint --------------------------------------------------------
+RUN chmod +x scripts/docker-entrypoint.sh
+
+EXPOSE 8000
+
+CMD ["bash", "scripts/docker-entrypoint.sh"]

@@ -34,7 +34,9 @@ services:
       - local
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.compose
     ports:
       - "8000:8000"
     env_file:
@@ -48,7 +50,9 @@ services:
       - ./docs:/app/docs
 
   ui:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.compose
     ports:
       - "8501:8501"
     env_file:
