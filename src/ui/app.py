@@ -482,18 +482,15 @@ if search_clicked and question.strip():
     pd = data.get("pipeline_details", {})
     if pd:
         with st.expander(t["pipeline_heading"], expanded=False):
-            # 1) Query translation
-            st.markdown(f'**{t["pipeline_translation"]}**')
+            # 1) Query translation (only show if translation actually happened)
             if pd.get("translated"):
+                st.markdown(f'**{t["pipeline_translation"]}**')
                 st.markdown(
                     f'- {t["pipeline_lang"]}: **{pd.get("detected_language", "")}**\n'
                     f'- {t["pipeline_original"]}: {pd.get("original_query", "")}\n'
                     f'- {t["pipeline_translated"]}: {pd.get("retrieval_query", "")}'
                 )
-            else:
-                st.markdown(f'_{t["pipeline_no_translation"]}_')
-
-            st.markdown("---")
+                st.markdown("---")
 
             def _render_result_table(results: list[dict], label: str) -> None:
                 """Render a ranked results table."""
