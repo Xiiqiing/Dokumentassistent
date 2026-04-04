@@ -2,6 +2,7 @@
 
 import logging
 import math
+import unicodedata
 
 from langchain_core.runnables import Runnable
 
@@ -42,8 +43,54 @@ class QueryRouter:
         self._generator = generator
         self._translate_query = translate_query
 
+    @staticmethod
+    def _detect_script(text: str) -> str | None:
+        """Detect language from Unicode script for non-Latin text.
+
+        Returns a language name (e.g. "Chinese") if the script is
+        unambiguously identifiable, or None to fall back to LLM detection.
+        """
+        script_counts: dict[str, int] = {}
+        for ch in text:
+            if ch.isspace() or ch in ".,!?;:\"'()[]{}":
+                continue
+            try:
+                name = unicodedata.name(ch, "")
+            except ValueError:
+                continue
+            if name.startswith("CJK") or name.startswith("KANGXI"):
+                script_counts["CJK"] = script_counts.get("CJK", 0) + 1
+            elif name.startswith("HIRAGANA") or name.startswith("KATAKANA"):
+                script_counts["Japanese"] = script_counts.get("Japanese", 0) + 1
+            elif name.startswith("HANGUL"):
+                script_counts["Korean"] = script_counts.get("Korean", 0) + 1
+            elif name.startswith("ARABIC"):
+                script_counts["Arabic"] = script_counts.get("Arabic", 0) + 1
+            elif name.startswith("DEVANAGARI"):
+                script_counts["Hindi"] = script_counts.get("Hindi", 0) + 1
+            elif name.startswith("THAI"):
+                script_counts["Thai"] = script_counts.get("Thai", 0) + 1
+            elif name.startswith("CYRILLIC"):
+                script_counts["Russian"] = script_counts.get("Russian", 0) + 1
+
+        if not script_counts:
+            return None
+
+        dominant = max(script_counts, key=lambda k: script_counts[k])
+        # CJK characters alone -> Chinese; if mixed with Hiragana/Katakana -> Japanese
+        if dominant == "CJK" and "Japanese" in script_counts:
+            return "Japanese"
+        if dominant == "CJK":
+            return "Chinese"
+        return dominant
+
     def _detect_and_translate_query(self, query: str) -> tuple[str, str]:
         """Detect the query language and optionally translate to Danish.
+
+        Uses Unicode script detection first for non-Latin scripts (Chinese,
+        Japanese, Korean, Arabic, etc.) which are reliably identifiable from
+        character ranges. Falls back to LLM-based detection for Latin-script
+        languages.
 
         Translation is only performed when ``self._translate_query`` is True and
         the detected language is not Danish.
@@ -56,13 +103,20 @@ class QueryRouter:
             retrieval_query is Danish when translation is enabled; otherwise the
             original query. detected_language is e.g. "English", "Danish".
         """
-        prompt = (
-            "Detect the language of the following text. "
-            "Reply with ONLY the language name in English (e.g. 'Danish', 'English', 'German'). "
-            "Nothing else.\n\n"
-            f"Text: {query}"
-        )
-        detected = str(self._generator.invoke(prompt)).strip().strip(".")
+        # Fast path: detect non-Latin scripts via Unicode
+        detected = self._detect_script(query)
+
+        if detected is None:
+            # Latin-script text — use LLM for detection
+            prompt = (
+                "Detect the language of the following text. "
+                "Reply with ONLY the language name in English "
+                "(e.g. 'Danish', 'English', 'German'). "
+                "Nothing else.\n\n"
+                f"Text: {query}"
+            )
+            detected = str(self._generator.invoke(prompt)).strip().strip(".")
+
         logger.info("Detected query language: %s", detected)
 
         if detected.lower() in ("danish", "dansk"):
