@@ -69,7 +69,7 @@ def create_app() -> FastAPI:
         bm25_weight=settings.bm25_weight,
     )
     reranker = Reranker(model=create_reranker(settings.reranker_model))
-    intent_classifier = IntentClassifier(llm=llm)
+    intent_classifier = IntentClassifier(llm=llm, model_name=settings.generation_model)
     generator = llm | StrOutputParser()
     query_router = QueryRouter(
         intent_classifier=intent_classifier,

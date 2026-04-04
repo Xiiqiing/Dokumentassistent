@@ -27,16 +27,23 @@ _SYSTEM_PROMPT = (
 class IntentClassifier:
     """Classifies user queries into predefined intent categories."""
 
-    def __init__(self, llm: BaseChatModel) -> None:
+    def __init__(self, llm: BaseChatModel, *, model_name: str = "") -> None:
         """Initialize the intent classifier.
 
         Args:
             llm: A LangChain BaseChatModel instance from provider.py.
+            model_name: Model identifier used to detect models that lack
+                system-message support (e.g. Gemma via Ollama).
         """
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", _SYSTEM_PROMPT),
-            ("human", "{query}"),
-        ])
+        if "gemma3" in model_name.lower():
+            prompt = ChatPromptTemplate.from_messages([
+                ("human", _SYSTEM_PROMPT + "\n\nQuery: {query}"),
+            ])
+        else:
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", _SYSTEM_PROMPT),
+                ("human", "{query}"),
+            ])
         self._chain = prompt | llm | StrOutputParser()
 
     def classify(self, query: str) -> IntentType:
