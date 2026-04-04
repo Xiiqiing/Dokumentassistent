@@ -139,7 +139,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "search_label": "Ask a question ...",
         "search_placeholder": "E.g.: What are the rules for processing personal data?",
         "search_button": "Search",
-        "example_button": "Random example",
+        "example_button": "Random question",
         "spinner": "Searching documents ...",
         "confidence_label": "Confidence",
         "intent_label": "Intent",
