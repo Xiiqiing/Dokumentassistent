@@ -83,6 +83,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "Kontroller at backend korer paa http://localhost:8000."
         ),
         "err_api": "API-fejl",
+        "err_rate_limit": "API-kvoten er midlertidigt opbrugt. Vent venligst et øjeblik, og prøv igen.",
         "err_timeout": "Forespoorgslen tog for lang tid. Prøv igen.",
         "unknown": "ukendt",
         "model_heading": "Aktuel model",
@@ -154,6 +155,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "Make sure the backend is running at http://localhost:8000."
         ),
         "err_api": "API error",
+        "err_rate_limit": "The API quota is temporarily exhausted. Please wait a moment and try again.",
         "err_timeout": "The request took too long. Please try again.",
         "unknown": "unknown",
         "model_heading": "Current model",
@@ -454,7 +456,10 @@ if search_clicked and question.strip():
             st.error(t["err_connection"])
             st.stop()
         except requests.HTTPError as exc:
-            st.error(f'{t["err_api"]}: {exc.response.status_code} -- {exc.response.text}')
+            if exc.response.status_code == 429:
+                st.warning(t["err_rate_limit"])
+            else:
+                st.error(f'{t["err_api"]}: {exc.response.status_code} -- {exc.response.text}')
             st.stop()
         except requests.Timeout:
             st.error(t["err_timeout"])

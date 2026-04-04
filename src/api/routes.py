@@ -164,7 +164,17 @@ async def query_documents(request: QueryRequest) -> QueryResponse:
     """
     logger.info("Received query: %s", request.question)
 
-    response = _query_router.route(query=request.question, top_k=request.top_k)
+    try:
+        response = _query_router.route(query=request.question, top_k=request.top_k)
+    except Exception as exc:
+        exc_str = str(exc)
+        if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str or "rate" in exc_str.lower():
+            logger.warning("Rate limit / quota exhausted: %s", exc_str)
+            raise HTTPException(
+                status_code=429,
+                detail="API-kvoten er midlertidigt opbrugt. Vent venligst et øjeblik, og prøv igen.",
+            ) from exc
+        raise
 
     sources = [
         {
