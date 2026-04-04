@@ -1,0 +1,120 @@
+Version 1
+
+Information til censorer om generativ AI til
+eksamen på KU
+På Københavns Universitet udfører vi vores arbejde med ansvarsfølelse og respekt for
+samfund, kulturarv, miljø og mennesker omkring os.
+Integritet, ærlighed og transparens er forudsætninger for akademisk arbejde. Vi forventer
+derfor, at eksamenspræstationer afspejler den studerendes egen læring og selvstændige
+indsats.
+Akademisk arbejde baserer sig altid på andres indsigter, viden og bidrag, men altid med
+grundig anerkendelse, respekt og kreditering af dette arbejde.
+Dette gælder også ved brug af generativ kunstig intelligens.
+
+Kære censor
+I dette dokument har vi samlet vigtige informationer om, hvordan KU håndterer anvendelsen af generativ
+AI (GAI) ved eksaminer. KU's regler danner imidlertid kun en overordnet ramme, og de enkelte
+fagmiljøer har mulighed for at fastsætte, hvorvidt GAI kan bruges samt i hvilket omfang. Det er derfor
+vigtigt at du informerer dig om de regler, der konkret finder anvendelse ved den specifikke prøve.
+
+Nye regler fra sommeren 2025
+Fra efteråret 2025 vil anvendelse af generativ AI (GAI) være tilladt ved alle eksamensformer (inkl.
+hjemmeopgaver, BA-projekter og specialer), hvor der i kursusbeskrivelsen står "alle hjælpemidler tilladt".
+Brug af GAI ved disse eksamener vil dermed kun være forbudt, såfremt det eksplicit anføres som sådan i
+eksamensbestemmelserne i kursusbeskrivelsen eller i studieordningen.
+KU lægger op til en GAI-praksis, som understøtter akademisk integritet, kritisk stillingtagen og faglig
+dømmekraft. KUs studerende skal altid følge nedenstående fire principper for god akademisk praksis ved
+anvendelsen af GAI: Pålidelighed, ærlighed og transparens, respekt og ansvar.
+Brug af GAI skal dermed integreres i eksisterende praksis med akademisk integritet som pejlemærke, og
+diskussionen skal drejes væk fra snyd og hen imod en meningsfuld og kritisk anvendelse af den nye
+teknologi, hvor det er fagligt og etisk forsvarligt.
+
+Bedømmelseskriterier og selvstændighed
+Det er den studerendes opnåelse af fagets målbeskrivelse, man som uddannelsesinstitution er interesseret i
+at udprøve til brug for troværdig certificering ved eksaminer. Det er den studerendes opgave at stå inde
+for den proces og det produkt, som udgør eksamenspræstationens faglige indhold og formmæssige udtryk,
+uanset om eller hvordan GAI har været anvendt.
+KU er derfor interesseret i at vide, hvordan den studerende har udarbejdet eksamenspræstationen. Denne
+transparens skal kommunikeres, fx gennem en deklaration, hvordan GAI har været anvendt, og hvilken
+betydning det har haft for det endelige produkt. Deklarationen kan være integreret i metodeafsnittet eller
+bestå af et særligt bilag. Deklarationens form besluttes af studienævnene.
+1
+
+Principper for eksaminer og GAI ved Københavns Universitet:
+• Det er den studerendes viden, færdigheder og kompetencer, eksaminer skal udprøve, og det er
+uddannelsernes ansvar, at prøverne er indrettet med henblik på dette.
+• Det skal være transparent, hvilke hjælpemidler der er anvendt i studie- og eksamensprocessen, og
+der skal argumenteres for de faglige valg, der er truffet, herunder brug af GAI.
+• Indhold og form i eksamenspræstationer er uanset hjælpemiddel alene den studerendes ansvar.
+Kriterier for studerendes selvstændighed ved anvendelse af GAI ved eksamen
+Studerende udviser selvstændighed ved:
+• sine til- og fravalg af GAI-værktøjer undervejs i tilegnelsen af det faglige stof og intenderede
+kompetencer.
+• at argumentere for sin anvendelse af bestemte GAI- værktøjer i sin behandling af bestemte faglige
+opgaver.
+• at kunne vurdere de processer og udvise faglig dømmekraft om de produkter, som genereres af
+eller med GAI.
+• at reflektere over, hvordan GAI kan påvirke fagfeltet nu og på sigt, samt bidrage til at udvikle og
+medskabe det.
+
+Juridiske aspekter
+Traditionelle former for plagiatkontrol leverer konkrete data (tekstuelt sammenfald) i undersøgelser af
+manglende akademisk integritet. På nuværende tidspunkt er det ikke muligt at dokumentere brugen af
+GAI således, at evidensen kan bruges til at løfte bevisbyrden ved en eventuel disciplinærsag.1
+En eventuel samtale med en studerende om formodning om manglende integritet vil derfor som regel
+udelukkende basere sig på indicier, fx "hallucinationer" (ikke-eksisterende kilder, domme m.v.),
+påfaldende formuleringer eller klare indikatorer så som "as a language model, I cannot…".
+Særligt i tilfælde hvor det er tilladt at bruge GAI kan det være vanskeligt at sandsynliggøre at GAI er
+anvendt på en måde der strider mod rammerne for den tilladte anvendelser. Sådanne sager vil ofte kræve
+en tilståelse, da indicier typisk ikke vil kunne danne et tungtvejende nok grundlag for en sag.
+Sådan forholder du dig, hvis du mistænker snyd
+Hvis du eller bedømmeren vurderer, at der kan være tale om en mulig overtrædelse af KU´s
+eksamensregler, herunder at GAI er blevet brugt på en måde, som ikke er tilladt, skal I i udgangspunktet
+fortsætte eksamen. I må ikke forkorte eller forlænge den pågældende eksamen, stille spørgsmål uden for
+målbeskrivelsen eller i øvrigt forskelsbehandle de studerende, fx ved at stille kontrolspørgsmål angående
+formodet ulovligt brug af GAI.2 I må dog gerne stille relevante faglige spørgsmål, der kan hjælpe med at
+afklare, om GAI er blevet brugt ulovligt.
+Ved skriftlige besvarelser må du ikke opsøge og udspørge de studerende om, hvordan eller hvorfor de har
+løst en given opgave på en bestemt måde.
+Hvis bedømmer eller censor får en mistanke om snyd, bør I drøfte mistanken indbyrdes.
+1
+
+Såkaldte AI-detektorer leverer sandsynlighedsbaserede scores, men ikke den bagvedliggende dokumentation.
+Detektorerne har desuden vist sig at være upålidelige, bl.a. ved efterfølgende redigering af GAI-genereret output
+eller ved tekster, som er skrevet af ikke-modersmålstalende. KU benytter derfor ikke AI-detektorer og fraråder
+denne praksis på det kraftigste.
+2
+Hvis man stiller rene kontrolspørgsmål blot for at kontrollere, at det er den studerende selv, der har skrevet teksten,
+kan det have en negativ indvirkning på den studerendes mulighed for at præstere bedst muligt, da tiden går fra andre
+(faglige) typer af spørgsmål, der kunne hæve niveauet.
+
+2
+
+Når den mundtlige prøve er afsluttet, anbefaler KU at I voterer og når frem til en karakter, men I må
+ikke oplyse den studerende om karakteren. Hvis I vurderer at der er risiko for at jeres mistanke kan
+influere på jeres bedømmelse, skal I dog ikke foretage en bedømmelse.
+Ved skriftlige besvarelser må I gerne foretage bedømmelsen, hvis I kan gøre det uden at mistanken
+influerer på bedømmelsen. Men I skal holde karakteren tilbage dvs., den skal ikke tastes i Digital
+Eksamen. Det er vigtigt, at I ikke bedømmer besvarelsen, hvis I vurderer at der er risiko for at mistanken
+kan påvirke jeres bedømmelse.
+Du skal informere den studerende om, at der igangsættes en undersøgelse af en mulig overtrædelse af
+KU´s eksamensregler. Ved mundtlige prøver skal den studerende have denne information, når prøven er
+afsluttet.
+Det er ikke nødvendigt at bevise en intention om at begå akademisk uredelighed. Studerende har ansvar
+for at overholde reglerne, og uagtsom overtrædelse behandles på samme måde som forsætlige
+overtrædelser.
+Bedømmer skal efterfølgende indberette forholdet til studielederen, der undersøger sagen, jf. KU’s
+ordensregler. Studielederen vil instruere bedømmeren i den videre proces (herunder hvilken empiri der
+skal indsamles). Det er også studielederen, der tager sig af den videre undersøgelse af sagen, herunder
+indkalder den studerende til en samtale.
+
+Afklaring inden eksamen
+Som censor skal du afklare følgende inden eksamen:
+• Hvad er målbeskrivelsen for det fag, du skal bedømme?
+• Er GAI generelt tilladt, defineret tilladt eller forbudt ved den specifikke prøve?
+• Er der defineret specifikke faglige mål i forhold til kritisk brug af GAI?
+• Er der specifikke formkrav til deklarationen af GAI-brug?
+
+3
+
+

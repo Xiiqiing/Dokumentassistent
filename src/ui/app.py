@@ -1,0 +1,435 @@
+"""Streamlit frontend for Dokumentassistent.
+
+Calls the FastAPI backend at http://localhost:8000.
+Single-page document search interface styled after ku.dk design language.
+"""
+
+import os
+from typing import Dict
+
+import streamlit as st
+import requests
+
+API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000")
+
+# ---------------------------------------------------------------------------
+# Internationalisation — all UI strings live here
+# ---------------------------------------------------------------------------
+TEXTS: Dict[str, Dict[str, str]] = {
+    "da": {
+        "page_title": "Dokumentassistent",
+        "lang_label": "Sprog",
+        "sidebar_heading": "Om systemet",
+        "sidebar_body": (
+            "Dokumentassistent er et prototypesystem til AI-drevet\n"
+            "dokumentsogning.\n\n"
+            "Systemet anvender en **Retrieval-Augmented Generation (RAG)**\n"
+            "pipeline med folgende komponenter:\n\n"
+            "- **Hybrid search** -- kombination af semantisk vektorsogning\n"
+            "  (Qdrant) og leksikalsk sogning (BM25)\n"
+            "- **Cross-encoder reranking** for praecis relevansvurdering\n"
+            "- **Provider-agnostic arkitektur** -- understotter Ollama,\n"
+            "  OpenAI, Azure OpenAI, Anthropic og Google GenAI\n"
+            "- Dokumenter: offentligt tilgaengelige KU-politikker og\n"
+            "  regelsaet i PDF-format\n\n"
+            "**Vaerktoejer og biblioteker:**\n"
+            "- **LangChain** -- orkestrering af RAG-pipeline\n"
+            "- **FastAPI** -- backend API-server\n"
+            "- **Qdrant** -- vektordatabase til semantisk soegning\n"
+            "- **rank_bm25** -- leksikalsk BM25-soegning\n"
+            "- **Sentence-Transformers** -- cross-encoder reranking\n"
+            "- **PyMuPDF** -- PDF-parsing og tekstudtraek\n"
+            "- **Streamlit** -- frontend brugerflade\n"
+            "- **RAGAS** -- evaluering af hentekvalitet\n"
+            "- **HuggingFace** -- flersprogede embedding-modeller"
+        ),
+        "chunking_label": "Chunking-strategi",
+        "chunking_help": "Vaelg hvordan dokumenterne opdeles i tekststykker.",
+        "topk_label": "Antal kilder (top_k)",
+        "topk_help": "Antal dokumentfragmenter der hentes fra sogeindekset.",
+        "title": "Dokumentassistent",
+        "subtitle": (
+            "Stil et sporgsmål, og systemet finder relevante afsnit "
+            "i eksempelfiler (såsom politiske dokumenter fra KU)."
+        ),
+        "search_label": "Stil et sporgsmål om ... ",
+        "search_placeholder": "F.eks.: Hvad er reglerne for behandling af personoplysninger?",
+        "search_button": "Sog",
+        "spinner": "Soger i dokumenterne ...",
+        "confidence_label": "Konfidensgrad",
+        "intent_label": "Intent",
+        "strategy_label": "Strategi",
+        "no_answer": "Intet svar modtaget.",
+        "sources_label": "Kilder",
+        "page_label": "side",
+        "no_sources": "Ingen kilder fundet for denne foresporgsel.",
+        "empty_warning": "Indtast venligst et sporgsmål.",
+        "err_connection": (
+            "Kunne ikke oprette forbindelse til API-serveren. "
+            "Kontroller at backend korer paa http://localhost:8000."
+        ),
+        "err_api": "API-fejl",
+        "err_timeout": "Forespoorgslen tog for lang tid. Prøv igen.",
+        "unknown": "ukendt",
+    },
+    "en": {
+        "page_title": "Document Assistant",
+        "lang_label": "Language",
+        "sidebar_heading": "About the system",
+        "sidebar_body": (
+            "Document Assistant is a prototype system for AI-powered\n"
+            "document search.\n\n"
+            "The system uses a **Retrieval-Augmented Generation (RAG)**\n"
+            "pipeline with the following components:\n\n"
+            "- **Hybrid search** -- combining semantic vector search\n"
+            "  (Qdrant) and lexical search (BM25)\n"
+            "- **Cross-encoder reranking** for precise relevance scoring\n"
+            "- **Provider-agnostic architecture** -- supports Ollama,\n"
+            "  OpenAI, Azure OpenAI, Anthropic, and Google GenAI\n"
+            "- Documents: publicly available KU policies and\n"
+            "  regulations in PDF format\n\n"
+            "**Tools & Libraries:**\n"
+            "- **LangChain** -- RAG pipeline orchestration\n"
+            "- **FastAPI** -- backend API server\n"
+            "- **Qdrant** -- vector database for semantic search\n"
+            "- **rank_bm25** -- lexical BM25 search\n"
+            "- **Sentence-Transformers** -- cross-encoder reranking\n"
+            "- **PyMuPDF** -- PDF parsing and text extraction\n"
+            "- **Streamlit** -- frontend user interface\n"
+            "- **RAGAS** -- retrieval quality evaluation\n"
+            "- **HuggingFace** -- multilingual embedding models"
+        ),
+        "chunking_label": "Chunking strategy",
+        "chunking_help": "Choose how documents are split into text chunks.",
+        "topk_label": "Number of sources (top_k)",
+        "topk_help": "Number of document fragments retrieved from the search index.",
+        "title": "Document Assistant",
+        "subtitle": (
+            "Ask a question, and the system will find relevant sections "
+            "in example documents."
+        ),
+        "search_label": "Ask a question ...",
+        "search_placeholder": "E.g.: What are the rules for processing personal data?",
+        "search_button": "Search",
+        "spinner": "Searching documents ...",
+        "confidence_label": "Confidence",
+        "intent_label": "Intent",
+        "strategy_label": "Strategy",
+        "no_answer": "No answer received.",
+        "sources_label": "Sources",
+        "page_label": "page",
+        "no_sources": "No sources found for this query.",
+        "empty_warning": "Please enter a question.",
+        "err_connection": (
+            "Could not connect to the API server. "
+            "Make sure the backend is running at http://localhost:8000."
+        ),
+        "err_api": "API error",
+        "err_timeout": "The request took too long. Please try again.",
+        "unknown": "unknown",
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Page config
+# ---------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Dokumentassistent",
+    page_icon=None,
+    layout="centered",
+)
+
+# ---------------------------------------------------------------------------
+# Custom CSS  --  KU visual identity
+# ---------------------------------------------------------------------------
+st.markdown(
+    """
+    <style>
+    /* ---------- Global ---------- */
+    html, body, [class*="css"] {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #333333;
+        background-color: #FFFFFF;
+    }
+
+    /* Hide default Streamlit branding but keep the sidebar toggle */
+    #MainMenu, footer {visibility: hidden;}
+    header[data-testid="stHeader"] {background: transparent;}
+
+    /* ---------- Forankringslinje ---------- */
+    .ku-line {
+        width: 100%;
+        height: 4px;
+        background-color: #901A1E;
+        margin-bottom: 1.5rem;
+    }
+
+    /* ---------- Title ---------- */
+    .ku-title {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #901A1E;
+        margin: 0 0 0.4rem 0;
+        letter-spacing: -0.02em;
+    }
+    .ku-subtitle {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 1.05rem;
+        color: #666666;
+        margin: 0 0 2rem 0;
+        line-height: 1.6;
+    }
+
+    /* ---------- Sidebar ---------- */
+    section[data-testid="stSidebar"] {
+        background-color: #FAFAFA;
+        border-right: 1px solid #E0E0E0;
+    }
+    section[data-testid="stSidebar"] .ku-sidebar-heading {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #901A1E;
+        margin-bottom: 0.5rem;
+    }
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] li {
+        font-size: 0.92rem;
+        color: #555555;
+        line-height: 1.55;
+    }
+
+    /* ---------- Source card ---------- */
+    .source-card {
+        border: 1px solid #CCCCCC;
+        padding: 1rem 1.2rem;
+        margin-bottom: 0.75rem;
+        background-color: #FAFAFA;
+    }
+    .source-card-title {
+        font-weight: 600;
+        color: #333333;
+        font-size: 0.95rem;
+        margin-bottom: 0.3rem;
+    }
+    .source-card-text {
+        font-size: 0.88rem;
+        color: #555555;
+        line-height: 1.55;
+    }
+    .source-card-meta {
+        font-size: 0.8rem;
+        color: #888888;
+        margin-top: 0.4rem;
+    }
+
+    /* ---------- Result metadata ---------- */
+    .result-meta {
+        font-size: 0.88rem;
+        color: #666666;
+        margin-bottom: 1.2rem;
+        padding-bottom: 0.8rem;
+        border-bottom: 1px solid #E0E0E0;
+    }
+
+    /* ---------- Answer area ---------- */
+    .answer-block {
+        font-size: 1.05rem;
+        line-height: 1.7;
+        color: #333333;
+        margin-bottom: 1.5rem;
+    }
+
+    /* ---------- Inputs ---------- */
+    .stTextInput > div > div > input {
+        border-radius: 0 !important;
+        border: 1px solid #999999 !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+    }
+    .stTextInput > div > div > input:focus {
+        border-color: #901A1E !important;
+        box-shadow: none !important;
+    }
+
+    /* ---------- Button ---------- */
+    .stButton > button {
+        border-radius: 0 !important;
+        background-color: #901A1E !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 0.95rem !important;
+        padding: 0.5rem 2rem !important;
+        letter-spacing: 0.02em;
+    }
+    .stButton > button:hover {
+        background-color: #7A1619 !important;
+    }
+    .stButton > button:active {
+        background-color: #611114 !important;
+    }
+
+    /* ---------- Slider ---------- */
+    .stSlider [data-baseweb="slider"] div[role="slider"] {
+        background-color: #901A1E !important;
+    }
+
+    /* ---------- Selectbox ---------- */
+    .stSelectbox > div > div {
+        border-radius: 0 !important;
+    }
+
+    /* ---------- Expander ---------- */
+    .streamlit-expanderHeader {
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 1rem !important;
+        color: #333333 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ---------------------------------------------------------------------------
+# Language selector  --  top-right corner via columns
+# ---------------------------------------------------------------------------
+_col_spacer, _col_lang = st.columns([5, 1])
+with _col_lang:
+    lang = st.selectbox(
+        "🌐",
+        options=["da", "en"],
+        format_func=lambda c: "Dansk" if c == "da" else "English",
+        index=0,
+        label_visibility="collapsed",
+    )
+
+t = TEXTS[lang]
+
+# ---------------------------------------------------------------------------
+# Sidebar
+# ---------------------------------------------------------------------------
+with st.sidebar:
+    st.markdown(
+        f'<div class="ku-sidebar-heading">{t["sidebar_heading"]}</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(t["sidebar_body"])
+
+    st.markdown("---")
+
+    strategy = st.selectbox(
+        t["chunking_label"],
+        options=["recursive", "semantic", "sliding"],
+        index=0,
+        help=t["chunking_help"],
+    )
+
+    top_k = st.slider(
+        t["topk_label"],
+        min_value=1,
+        max_value=20,
+        value=5,
+        help=t["topk_help"],
+    )
+
+# ---------------------------------------------------------------------------
+# Main content
+# ---------------------------------------------------------------------------
+
+# Forankringslinje
+st.markdown('<div class="ku-line"></div>', unsafe_allow_html=True)
+
+# Title block
+st.markdown(f'<div class="ku-title">{t["title"]}</div>', unsafe_allow_html=True)
+st.markdown(
+    f'<div class="ku-subtitle">{t["subtitle"]}</div>',
+    unsafe_allow_html=True,
+)
+
+# ---------------------------------------------------------------------------
+# Search form
+# ---------------------------------------------------------------------------
+with st.form("search_form"):
+    question = st.text_input(
+        t["search_label"],
+        placeholder=t["search_placeholder"],
+    )
+    search_clicked = st.form_submit_button(t["search_button"])
+
+# ---------------------------------------------------------------------------
+# Query logic
+# ---------------------------------------------------------------------------
+if search_clicked and question.strip():
+    with st.spinner(t["spinner"]):
+        try:
+            resp = requests.post(
+                f"{API_BASE}/query",
+                json={
+                    "question": question.strip(),
+                    "top_k": top_k,
+                    "strategy": strategy,
+                },
+                timeout=120,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except requests.ConnectionError:
+            st.error(t["err_connection"])
+            st.stop()
+        except requests.HTTPError as exc:
+            st.error(f'{t["err_api"]}: {exc.response.status_code} -- {exc.response.text}')
+            st.stop()
+        except requests.Timeout:
+            st.error(t["err_timeout"])
+            st.stop()
+
+    # -- Metadata bar --
+    confidence = data.get("confidence", 0.0)
+    intent = data.get("intent", t["unknown"])
+    confidence_pct = f"{confidence * 100:.0f}%"
+
+    st.markdown(
+        f'<div class="result-meta">'
+        f'{t["confidence_label"]}: <strong>{confidence_pct}</strong> &nbsp;&middot;&nbsp; '
+        f'{t["intent_label"]}: <strong>{intent}</strong> &nbsp;&middot;&nbsp; '
+        f'{t["strategy_label"]}: <strong>{strategy}</strong> &nbsp;&middot;&nbsp; '
+        f"top_k: <strong>{top_k}</strong>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    # -- Answer --
+    answer = data.get("answer", t["no_answer"])
+    st.markdown(f'<div class="answer-block">{answer}</div>', unsafe_allow_html=True)
+
+    # -- Sources --
+    sources = data.get("sources", [])
+    if sources:
+        with st.expander(f'{t["sources_label"]} ({len(sources)})', expanded=False):
+            for src in sources:
+                doc_name = src.get("document_id", src.get("chunk_id", t["unknown"]))
+                text = src.get("text", "")
+                score = src.get("score", 0.0)
+                retrieval_source = src.get("source", "")
+                metadata = src.get("metadata", {})
+                page = metadata.get("page", "") if isinstance(metadata, dict) else ""
+
+                page_info = f' &middot; {t["page_label"]} {page}' if page else ""
+                score_display = f"{score:.3f}"
+
+                st.markdown(
+                    f'<div class="source-card">'
+                    f'<div class="source-card-title">{doc_name}{page_info}</div>'
+                    f'<div class="source-card-text">{text[:500]}</div>'
+                    f'<div class="source-card-meta">'
+                    f"Score: {score_display} &nbsp;&middot;&nbsp; {retrieval_source}"
+                    f"</div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+    else:
+        st.info(t["no_sources"])
+
+elif search_clicked:
+    st.warning(t["empty_warning"])

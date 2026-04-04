@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/test_chunker.py -v)",
+      "Bash(python -m pytest tests/test_embedder.py -v)",
+      "Bash(python3 -m pytest tests/test_embedder.py -v)",
+      "Read(//opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/bin/**)",
+      "Bash(pip list:*)",
+      "Bash(/Users/xiqing/Documents/GitHub/KUDocAssistant/.venv/bin/python -m pytest tests/test_embedder.py -v)",
+      "Read(//Users/xiqing/.cache/huggingface/**)",
+      "Read(//Users/xiqing/.config/**)",
+      "Bash(curl -sI \"https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1/resolve/main/config.json\")"
+    ]
+  }
+}

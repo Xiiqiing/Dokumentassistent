@@ -1,0 +1,313 @@
+Guide
+Om brug af generativ AI
+Til kommunerne
+
+Version 2.0
+December 2025
+
+Introduktion
+Der er stor opmærksomhed på generativ AI og på, hvordan offentligt
+
+Fundament for ansvarlig anvendelse
+
+tilgængelige chatbots såsom Copilot, Gemini, Le Chat og ChatGPT,
+kommuners egne AI-løsninger og leverandørers AI-løsninger kan
+understøtte arbejdet i kommunerne bedst muligt. Mange kommuner
+har afprøvet eller bruger teknologien, som både vækker begejstring
+og bekymring.
+Teknologien har potentiale til at løse nogle af de udfordringer,
+
+Anvendelsen af generativ AI i kommunerne kræver mere end teknologisk
+
+kommunerne står med. Generativ AI kan fx opsummere
+hovedpunkter fra en tung lovtekst, finde på nye ideer eller
+identificere mønstre i store datamængder.
+Nye AI-værktøjer kan desuden forstå både tekst, billeder og lyd, fx
+udtrække information fra et skannet dokument eller beskrive
+indholdet af et foto.
+Generativ AI udvikler sig hurtigt og skaber fortsat stor
+opmærksomhed om, hvordan teknologien påvirker medarbejdere,
+ledelse, borgere og arbejdsgange.
+KL deler i guiden ny viden og erfaringer om kommunernes brug af
+generativ AI. I kan støtte sig jer guiden som inspiration, hvis I vil i
+gang med at afprøve mulighederne med teknologien.
+Guiden er et supplement til lokale AI-retningslinjer, og kommunen
+har til enhver tid ansvar for, at lovgivningen overholdes.
+
+2
+
+kunnen – den skal bygge på et fundament af faglighed, etiske overvejelser,
+juridiske og organisatoriske rammer. Hver kommune skal finde sin egen
+balance mellem at være nysgerrig og udforskende, og samtidig handle
+ansvarligt inden for gældende rammer. Disse tre spørgsmål kan være med til
+at skabe dette fundament:
+Kan vi bruge AI?
+Den teknologiske modenhed og organisatorisk kompleksitet
+Må vi bruge AI?
+De juridiske og lovgivningsmæssige rammer
+
+Bør vi bruge AI?
+De etiske, faglige og organisatoriske overvejelser
+Det handler om at sikre, at teknologien bruges dér, hvor den skaber værdi og
+mening – og hvor organisationen er klar til at tage ansvar for både
+muligheder og konsekvenser.
+På KL’s Videncenter kan du få viden om AI, finde inspiration om
+anvendelser af AI i kommunerne og gå på opdagelse i praktiske
+og juridiske AI-værktøjer.
+
+Indhold
+Side 4
+Forstå begreberne
+Introduktion til generativ AI og store sprogmodeller
+Side 5
+Opmærksomhedspunkter
+En hjælp til ansvarlig brug af generativ AI
+Side 7
+Anvendelsesmuligheder
+Anvendelser af generativ AI på tværs af opgavetyper
+og fagligheder til inspiration og dialog
+Side 8
+AI-færdigheder for medarbejdere
+Teknologiske, praktiske og etiske kompetencer til
+ansvarlig brug af kunstig intelligens
+Side 9
+Inspiration
+Deling af links og ressourcer til inspiration
+
+3
+
+Forstå begreberne
+d er ener ti AI?
+Generativ AI er en type af kunstig intelligens, der kan skabe nyt indhold eller
+omforme eksisterende indhold; fx i form af tekster, billeder, lyd og video.
+Teknologien bruges fx til at skrive, omskrive, opsummere, oversætte eller
+analysere tekster.
+Man indtaster eller indtaler blot en kort instruktion (prompt), som modellen
+bruger til at løse opgaven.
+Moderne modeller er ofte multimodale og kan både forstå og producere flere
+forskellige typer medier i et og samme system.
+d er st re spr m de er?
+Store sprogmodeller er en særlig type af modeller inden for generativ AI.
+Sprogmodeller er trænet på store mængder af tekst, som gør dem i stand til at
+identificere statistiske relationer mellem ord. Det gør, at sprogmodeller kan
+skabe ny tekst, opsummere en tekst og bredt set reagere på det prompt, som
+man giver. Nogle sprogmodeller har en vidensgrænse, hvis de er trænet på
+data til en bestemt dato, mens andre kan hente opdaterede data fra nettet.
+
+Inspiration til dialog
+Gennem KL’s AI-ordbog kan kommuner skabe en fælles forståelse af begreber
+og teknologier bag kunstig intelligens. Med Kommunernes Teknologiradar
+kan kommuner få øje på konkrete anvendelser og eksempler, der kan
+inspirere den lokale dialog om, hvordan teknologien kan bruges i praksis.
+
+Kommunernes Teknologiradar
+Læs mere om teknologier og centrale begreber inden for
+kunstig intelligens i Kommunernes Teknologiradar på KL’s
+Videncenter.
+
+4
+
+Opmærksomhedspunkter
+Her er nogle overordnede opmærksomhedspunkter, du bør overveje, når du bruger generativ AI. Det er ikke en udtømmende
+tjekliste, men en hjælp til ansvarlig brug. Outputs fra generativ AI kan aldrig stå alene og bør altid bearbejdes og tilpasses af
+fagmedarbejdere, som har ansvaret for anvendelsen. Orientér dig også i jeres lokale retningslinjer på området.
+Opmærksomhedspunkterne er inddelt i tre dele: Input (hvad du indtaster), Output (hvad AI genererer) og Organisation
+(rammer, ansvar og praksis).
+
+Del 1: Input
+Hvad du indtaster i AI-værktøjer
+
+5
+
+Personoplysninger
+Du må ikke dele personoplysninger i offentligt tilgængelige AIløsninger. Personoplysninger må derfor kun indtastes i generative AIværktøjer, hvis værktøjet er blevet vurderet og godkendt til brug for
+behandling af personoplysninger.
+
+Indtast ikke forretningskritisk information
+Du må ikke dele forretningskritisk information. Det kan fx være
+fortrolige orienteringer, strategisk følsomme oplysninger eller
+pressemeddelelser, før de er offentliggjort.
+
+Respekter ophavsret
+Upload eller indtast kun materiale, du har ret til at bruge. Du må
+ikke dele filer, tekster, billeder eller andet indhold, som er
+ophavsretligt beskyttet, medmindre du har de nødvendige
+rettigheder eller tilladelser.
+
+Brugerdefinerede AI-assistenter
+Undgå at bruge offentligt tilgængelige brugerdefinerede AI-assistenter.
+De kan indeholde skjult eller ondsindet kode. Har du brug for en
+brugerdefineret AI-assistent, så opret din egen, hold den privat og del
+den kun internt i organisationen, hvis det er godkendt hos jer.
+
+Opmærksomhedspunkter
+Del 2: Output
+Hvad AI generer af svar til brugeren
+Vær opmærksom på bias og hallucinationer
+Generativ AI er påvirket af bias, når den er trænet på internetdata
+med menneskelige fordomme. Svar genereres ud fra sandsynlighed
+snarere end fakta, og derfor er der risiko for hallucinationer i form af
+opfundne tal, ikke-eksisterende kilder eller forkerte paragraffer.
+
+Menneskelig bearbejdning og ansvar
+En fagperson bør altid gennemgå, korrigere og godkende udkast
+baseret på AI, før det bliver brugt eller delt. Der bør altid være en
+leder eller medarbejder, som på forhånd og løbende tager stilling til
+juridiske forhold og afgrænser, hvad generativ AI skal bruges til.
+
+Del 3: Organisation
+Ansvar, praksis og kultur for ansvarlig anvendelse af generativ AI
+
+6
+
+Vær åben og transparent
+Når du anvender generativ AI, bør du være åben om det. Fx hvis du,
+i samspil med generativ AI, har lavet et resumé. Så fortæl det til dine
+kollegaer, som skal bruge resuméet. Hjælp hinanden med kritisk at
+evaluere kvaliteten af de outputs, I anvender i det videre arbejde.
+
+Vær forsigtig
+Hvis du er i tvivl om en handling med generativ AI overholder loven,
+så undlad at udføre den, før du har opnået afklaring om det. Hvis du
+fx er i tvivl om dokumenter indeholder personoplysninger, så lad
+være med at uploade dem til offentligt tilgængelige AI-tjenester.
+
+Del erfaringer og hold retningslinjer opdaterede
+Sørg for at dele viden og erfaringer om jeres brug af generativ AI.
+Hold løbende jeres retningslinjer for brug opdaterede. Det kan
+bidrage til en god kultur og praksis for arbejdet med generativ AI.
+
+Gennemsigtighed og ansvar
+Organisationen bør klart beskrive, hvem der har ansvar for brugen af
+AI – både fagligt og juridisk. Medarbejdere skal kunne forklare,
+hvordan AI er brugt i en opgave eller beslutning.
+
+Anvendelsesmuligheder
+Der er en bred vifte af anvendelsesmuligheder inden for generativ AI, og mulighederne bliver hele tiden flere. Herunder er et udpluk af anvendelser til
+inspiration, som teknologien giver mulighed for. Bemærk, at lokale løsninger ikke nødvendigvis giver mulighed for alle disse anvendelser.
+Idégenerering og feedback
+Lave brainstorms og få en masse idéer på bordet, eller du kan teste
+idéer af og få hurtig feedback på fx fordele og ulemper.
+
+Taleteknologi
+Bruge tale-til-tekst til dokumentation
+af optagede møder
+
+Planlægning
+Få udkast til tids- og projektplaner eller opstille budgetter og
+tilhørende scenarier, evt. med udgangspunkt i jeres uploadede filer.
+
+Medieproduktion
+Generere nye eller tilpasse eksisterende illustrationer, grafik eller
+video og få hjælp til billedbehandling og alt-tekster.
+
+Tekstbehandling og oversættelse
+Få hjælp til korrektur, opsummering og oversættelse. Tilpas fx til en
+bestemt målgruppe og gør svært stof mere tilgængeligt.
+
+Kodning
+Få hjælp til at generere kode, til at få forklaring af en kode eller
+forslag til fejlfinding.
+
+Personlige og tilpassede chatbots
+Opsætte tilpassede chatbots. Disse chatbots kan fx trække på jeres
+vejledninger eller faste procedurer, eller de kan være skræddersyet
+til kommunikation til bestemte målgrupper.
+
+AI-agenter
+Lave AI-agenter, der autonomt kan analysere information og udføre
+handlinger inden for et begrænset område. De kan fx gennemgå
+nyheder og referater fra mange hjemmesider.
+
+Når du anvender generativ AI, så brug din forestillingsevne til at undersøge, hvordan teknologien kan
+anvendes og overvej samtidig, hvorfor du bruger den, hvordan du bringer din faglighed i spil og hvornår
+i arbejdsprocessen den giver mening at anvende.
+
+7
+
+AI-færdigheder
+Det er afgørende, at medarbejdere har viden og kompetencer
+til at kunne anvende kunstig intelligens på en ansvarlig og
+effektiv måde. Ifølge AI-forordningen skal organisationer sikre
+nødvendige AI-færdigheder hos medarbejdere, der anvender
+AI-systemer.
+Kravet gælder bredt for både virksomheder og offentlige
+myndigheder fra d. 2. februar 2025.
+Kommunerne skal vurdere, hvilket niveau af AI-færdigheder
+der er tilstrækkeligt for medarbejderne. Niveauet afhænger af
+omfanget og risiciene ved den pågældende AI-tjeneste og dens
+anvendelse.
+Færdigheder opdelt i tre hovedområder
+AI-færdigheder kan opdeles i tre hovedområder: teknologisk,
+praktisk og etisk forståelse af teknologien.
+
+KL’s Videncenter
+Orienter jer i AI-færdigheder
+og ressourcer
+
+Teknologiske AI-færdigheder
+Handler om at forstå, hvordan AI-systemer er skabt og
+fungerer. De specifikke kompetencer afhænger af,
+hvilken form for kunstig intelligens organisationen
+anvender, fx maskinlæring, generativ AI eller computer
+vision.
+Praktiske AI-færdigheder
+Handler om at bruge et AI-system korrekt. Det
+indebærer viden om, hvordan systemet anvendes,
+hvilke opgaver det kan løse, og hvilke forholdsregler der
+skal tages.
+Etiske AI-færdigheder
+Handler om at forstå de konsekvenser, som
+implementeringen af AI-systemer kan have for
+medarbejdere og samfundet generelt.
+
+Digitaliseringsstyrelsen
+Læs om fx lovgivningen om AIfærdigheder
+
+8
+
+Inspiration
+På denne side deles materialer og links til inspiration om
+kunstig intelligens i kommunerne.
+KL’s Videncenter
+På Videncenter deler KL viden og værktøjer til
+kommunernes arbejde med AI.
+Kommunernes AI-landkort
+Kommunernes AI-landkort er et
+interaktivt overblik over kommunale AIprojekter, der gør det nemt for
+kommunerne at finde inspiration
+
+Guide om generativ AI
+Digitaliseringsstyrelsen har lanceret guides til
+offentlige myndigheder om ansvarlig anvendelse af
+generativ AI.
+Dyk ned i reglerne og i tilsynet med AI-forordningen
+på Digitaliseringsstyrelsens hjemmeside.
+
+KL’s juridiske AI-værktøjskasse
+Værktøjskassen er en praktisk guide for
+kommuner til at navigere reglerne i
+AI‑forordningen og GDPR
+
+Specifikation om AI-færdigheder
+Dansk Standard har udarbejdet en PAS (Publicly
+Available Specification) om AI-færdigheder som en
+vejledning til organisationer, der anvender – men
+ikke udvikler – AI-systemer.
+
+ratis
+webinarer
+AI-webinarrækken er målrettet AIinteresserede medarbejdere og ledere i
+kommunerne.
+
+Det Europæiske Kontor for AI
+AI-kontoret, det såkaldte AI-Office, er ansvarlig for
+håndhævelsen af AI-forordningen sammen med
+medlemsstaterne.
+
+Du kan også finde inspirationskataloger om AI, en AI-ordbog
+og nyheder om AI.
+
+9
+
+
