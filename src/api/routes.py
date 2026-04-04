@@ -62,6 +62,28 @@ class QueryRequest(BaseModel):
     strategy: str = "recursive"
 
 
+class PipelineResultItem(BaseModel):
+    """A single result item in pipeline details."""
+
+    document_id: str
+    chunk_id: str
+    score: float
+    source: str
+
+
+class PipelineDetailsResponse(BaseModel):
+    """Intermediate pipeline data for the query response."""
+
+    original_query: str = ""
+    retrieval_query: str = ""
+    detected_language: str = ""
+    translated: bool = False
+    dense_results: list[PipelineResultItem] = []
+    sparse_results: list[PipelineResultItem] = []
+    fused_results: list[PipelineResultItem] = []
+    reranked_results: list[PipelineResultItem] = []
+
+
 class QueryResponse(BaseModel):
     """Response body for the query endpoint."""
 
@@ -69,6 +91,7 @@ class QueryResponse(BaseModel):
     sources: list[dict[str, str | float]]
     intent: str
     confidence: float
+    pipeline_details: PipelineDetailsResponse = PipelineDetailsResponse()
 
 
 class IngestRequest(BaseModel):
@@ -154,11 +177,35 @@ async def query_documents(request: QueryRequest) -> QueryResponse:
         for result in response.sources
     ]
 
+    def _to_pipeline_items(results: list) -> list[PipelineResultItem]:
+        return [
+            PipelineResultItem(
+                document_id=r.chunk.document_id,
+                chunk_id=r.chunk.chunk_id,
+                score=r.score,
+                source=r.source,
+            )
+            for r in results
+        ]
+
+    pd = response.pipeline_details
+    pipeline_details = PipelineDetailsResponse(
+        original_query=pd.original_query,
+        retrieval_query=pd.retrieval_query,
+        detected_language=pd.detected_language,
+        translated=pd.translated,
+        dense_results=_to_pipeline_items(pd.dense_results),
+        sparse_results=_to_pipeline_items(pd.sparse_results),
+        fused_results=_to_pipeline_items(pd.fused_results),
+        reranked_results=_to_pipeline_items(pd.reranked_results),
+    )
+
     return QueryResponse(
         answer=response.answer,
         sources=sources,
         intent=response.intent.value,
         confidence=response.confidence,
+        pipeline_details=pipeline_details,
     )
 
 

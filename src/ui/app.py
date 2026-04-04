@@ -70,6 +70,21 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "model_llm": "LLM",
         "model_embedding": "Embedding",
         "model_unavailable": "Kunne ikke hente modelinfo.",
+        "pipeline_heading": "Pipeline-detaljer",
+        "pipeline_translation": "Oversaettelse",
+        "pipeline_original": "Original foresporgsel",
+        "pipeline_translated": "Oversat til dansk",
+        "pipeline_lang": "Sprog registreret",
+        "pipeline_no_translation": "Ingen oversaettelse (foresporgsel allerede paa dansk)",
+        "pipeline_bm25": "BM25-resultater (leksikalsk soegning)",
+        "pipeline_dense": "Vektorsoegning (semantisk)",
+        "pipeline_fused": "RRF-fusioneret raekkefoelge",
+        "pipeline_reranked": "Reranking (endelig raekkefoelge)",
+        "pipeline_doc": "Dokument",
+        "pipeline_score": "Score",
+        "pipeline_rank": "#",
+        "pipeline_no_results": "Ingen resultater",
+        "pipeline_score_change": "Score-aendring",
     },
     "en": {
         "page_title": "Document Assistant",
@@ -125,6 +140,21 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "model_llm": "LLM",
         "model_embedding": "Embedding",
         "model_unavailable": "Could not fetch model info.",
+        "pipeline_heading": "Pipeline Details",
+        "pipeline_translation": "Query Translation",
+        "pipeline_original": "Original query",
+        "pipeline_translated": "Translated to Danish",
+        "pipeline_lang": "Detected language",
+        "pipeline_no_translation": "No translation (query already in Danish)",
+        "pipeline_bm25": "BM25 Results (lexical search)",
+        "pipeline_dense": "Vector Search (semantic)",
+        "pipeline_fused": "RRF Fused Ranking",
+        "pipeline_reranked": "Reranked (final ranking)",
+        "pipeline_doc": "Document",
+        "pipeline_score": "Score",
+        "pipeline_rank": "#",
+        "pipeline_no_results": "No results",
+        "pipeline_score_change": "Score change",
     },
 }
 
@@ -448,6 +478,81 @@ if search_clicked and question.strip():
                 )
     else:
         st.info(t["no_sources"])
+
+    # -- Pipeline Details --
+    pd = data.get("pipeline_details", {})
+    if pd:
+        with st.expander(t["pipeline_heading"], expanded=False):
+            # 1) Query translation
+            st.markdown(f'**{t["pipeline_translation"]}**')
+            if pd.get("translated"):
+                st.markdown(
+                    f'- {t["pipeline_lang"]}: **{pd.get("detected_language", "")}**\n'
+                    f'- {t["pipeline_original"]}: {pd.get("original_query", "")}\n'
+                    f'- {t["pipeline_translated"]}: {pd.get("retrieval_query", "")}'
+                )
+            else:
+                st.markdown(f'_{t["pipeline_no_translation"]}_')
+
+            st.markdown("---")
+
+            def _render_result_table(results: list[dict], label: str) -> None:
+                """Render a ranked results table."""
+                st.markdown(f"**{label}**")
+                if not results:
+                    st.caption(t["pipeline_no_results"])
+                    return
+                header = f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | {t["pipeline_score"]} |\n|---|---|---|'
+                rows = "\n".join(
+                    f'| {i + 1} | {r.get("document_id", "")} | {r.get("score", 0):.4f} |'
+                    for i, r in enumerate(results)
+                )
+                st.markdown(f"{header}\n{rows}")
+
+            # 2) BM25 results
+            _render_result_table(pd.get("sparse_results", []), t["pipeline_bm25"])
+
+            st.markdown("---")
+
+            # 3) Vector search results
+            _render_result_table(pd.get("dense_results", []), t["pipeline_dense"])
+
+            st.markdown("---")
+
+            # 4) RRF fused ranking
+            _render_result_table(pd.get("fused_results", []), t["pipeline_fused"])
+
+            st.markdown("---")
+
+            # 5) Reranked results with score change
+            reranked = pd.get("reranked_results", [])
+            st.markdown(f'**{t["pipeline_reranked"]}**')
+            if reranked:
+                # Build a map from chunk_id -> fused score for comparison
+                fused_scores: dict[str, float] = {
+                    r.get("chunk_id", ""): r.get("score", 0.0)
+                    for r in pd.get("fused_results", [])
+                }
+                header = (
+                    f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | '
+                    f'{t["pipeline_score"]} | {t["pipeline_score_change"]} |\n'
+                    f"|---|---|---|---|"
+                )
+                rows_list = []
+                for i, r in enumerate(reranked):
+                    cid = r.get("chunk_id", "")
+                    new_score = r.get("score", 0.0)
+                    old_score = fused_scores.get(cid)
+                    if old_score is not None:
+                        change = f"RRF {old_score:.4f} -> {new_score:.4f}"
+                    else:
+                        change = "-"
+                    rows_list.append(
+                        f'| {i + 1} | {r.get("document_id", "")} | {new_score:.4f} | {change} |'
+                    )
+                st.markdown(f"{header}\n" + "\n".join(rows_list))
+            else:
+                st.caption(t["pipeline_no_results"])
 
 elif search_clicked:
     st.warning(t["empty_warning"])

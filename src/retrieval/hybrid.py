@@ -1,6 +1,7 @@
 """Hybrid search combining dense and sparse retrieval with reciprocal rank fusion."""
 
 import logging
+from dataclasses import dataclass
 
 from src.models import QueryResult
 from src.retrieval.bm25_search import BM25Search
@@ -8,6 +9,21 @@ from src.retrieval.embedder import Embedder
 from src.retrieval.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class HybridSearchResult:
+    """Container for hybrid search results including intermediate stages.
+
+    Attributes:
+        dense_results: Results from dense (vector) retrieval.
+        sparse_results: Results from sparse (BM25) retrieval.
+        fused_results: Results after reciprocal rank fusion.
+    """
+
+    dense_results: list[QueryResult]
+    sparse_results: list[QueryResult]
+    fused_results: list[QueryResult]
 
 
 class HybridRetriever:
@@ -46,6 +62,19 @@ class HybridRetriever:
         Returns:
             List of QueryResult objects sorted by fused score.
         """
+        result = self.search_detailed(query, top_k)
+        return result.fused_results
+
+    def search_detailed(self, query: str, top_k: int) -> HybridSearchResult:
+        """Execute hybrid search and return all intermediate results.
+
+        Args:
+            query: The search query string.
+            top_k: Number of top results to return after fusion.
+
+        Returns:
+            HybridSearchResult containing dense, sparse, and fused results.
+        """
         query_embedding = self._embedder.embed_text(query)
         dense_results = self._vector_store.search(query_embedding, top_k)
         sparse_results = self._bm25_search.search(query, top_k)
@@ -57,7 +86,11 @@ class HybridRetriever:
         )
 
         fused = self.reciprocal_rank_fusion(dense_results, sparse_results, k=60)
-        return fused[:top_k]
+        return HybridSearchResult(
+            dense_results=dense_results,
+            sparse_results=sparse_results,
+            fused_results=fused[:top_k],
+        )
 
     def reciprocal_rank_fusion(
         self,

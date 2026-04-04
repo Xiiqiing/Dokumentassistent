@@ -5,7 +5,7 @@ import math
 
 from langchain_core.runnables import Runnable
 
-from src.models import IntentType, GenerationResponse
+from src.models import IntentType, GenerationResponse, PipelineDetails
 from src.agent.intent_classifier import IntentClassifier
 from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
@@ -104,6 +104,7 @@ class QueryRouter:
 
         # Detect language and translate to Danish for retrieval if needed
         retrieval_query, user_language = self._detect_and_translate_query(query)
+        translated = retrieval_query != query
 
         intent = self._intent_classifier.classify(query)
         logger.info("Classified intent: %s", intent.value)
@@ -112,11 +113,28 @@ class QueryRouter:
         should_retrieve = intent != IntentType.UNKNOWN
         logger.debug("[DEBUG] Retrieval executed: %s (intent=%s)", should_retrieve, intent.value)
 
-        results = self._hybrid_retriever.search(retrieval_query, top_k=top_k) if should_retrieve else []
+        # Use detailed search to capture intermediate results
+        pipeline = PipelineDetails(
+            original_query=query,
+            retrieval_query=retrieval_query,
+            detected_language=user_language,
+            translated=translated,
+        )
+
+        if should_retrieve:
+            hybrid_result = self._hybrid_retriever.search_detailed(retrieval_query, top_k=top_k)
+            pipeline.dense_results = hybrid_result.dense_results
+            pipeline.sparse_results = hybrid_result.sparse_results
+            pipeline.fused_results = hybrid_result.fused_results
+            results = hybrid_result.fused_results
+        else:
+            results = []
+
         logger.info("Retrieved %d results from hybrid search", len(results))
         logger.debug("[DEBUG] Retrieval returned %d results", len(results))
 
         reranked = self._reranker.rerank(retrieval_query, results, top_k=top_k) if results else []
+        pipeline.reranked_results = reranked
         logger.info("Reranked to %d results", len(reranked))
 
         if reranked and intent == IntentType.FACTUAL:
@@ -143,6 +161,7 @@ class QueryRouter:
             sources=reranked,
             intent=intent,
             confidence=confidence,
+            pipeline_details=pipeline,
         )
 
     def _build_prompt(

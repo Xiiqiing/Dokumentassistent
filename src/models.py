@@ -58,6 +58,31 @@ class QueryResult:
 
 
 @dataclass
+class PipelineDetails:
+    """Intermediate pipeline data for debugging and transparency.
+
+    Attributes:
+        original_query: The user's original query text.
+        retrieval_query: The query used for retrieval (may be translated).
+        detected_language: Detected language of the original query.
+        translated: Whether the query was translated for retrieval.
+        dense_results: Results from dense (vector) retrieval.
+        sparse_results: Results from sparse (BM25) retrieval.
+        fused_results: Results after reciprocal rank fusion.
+        reranked_results: Results after cross-encoder reranking.
+    """
+
+    original_query: str = ""
+    retrieval_query: str = ""
+    detected_language: str = ""
+    translated: bool = False
+    dense_results: list[QueryResult] = field(default_factory=list)
+    sparse_results: list[QueryResult] = field(default_factory=list)
+    fused_results: list[QueryResult] = field(default_factory=list)
+    reranked_results: list[QueryResult] = field(default_factory=list)
+
+
+@dataclass
 class GenerationResponse:
     """Structured response from the generation pipeline.
 
@@ -66,9 +91,11 @@ class GenerationResponse:
         sources: List of source chunks used for generation.
         intent: Classified intent of the original query.
         confidence: Model confidence in the answer (0.0-1.0).
+        pipeline_details: Optional intermediate pipeline data.
     """
 
     answer: str
     sources: list[QueryResult]
     intent: IntentType
     confidence: float
+    pipeline_details: PipelineDetails = field(default_factory=PipelineDetails)
