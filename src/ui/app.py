@@ -5,11 +5,30 @@ Single-page document search interface with clean sans-serif design.
 """
 
 import os
+import random
 
 import streamlit as st
 import requests
 
 API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000")
+
+# ---------------------------------------------------------------------------
+# Example questions — drawn from the documents in docs/
+# ---------------------------------------------------------------------------
+EXAMPLE_QUESTIONS: list[str] = [
+    "Hvad er reglerne for brug af generativ AI til eksamen på KU?",
+    "Hvordan håndteres uansøgt afsked begrundet i institutionens forhold?",
+    "Hvad er de disciplinære foranstaltninger over for studerende?",
+    "Hvordan skal klager over medarbejdere og ledere behandles?",
+    "Hvad er retningslinjerne for afholdelse af MUS-samtaler?",
+    "Hvordan er års- og skemastrukturen organiseret på KU?",
+    "Hvilke regler gælder for eksamenstilmelding og afmelding?",
+    "Hvordan skal studerende dokumentere brug af GAI i skriftlige opgaver?",
+    "Hvad er kommunernes ansvar ved brug af generativ AI?",
+    "Hvilke principper gælder for akademisk integritet ved brug af AI?",
+    "Hvornår kan en leder afvise en klage som åbenbart grundløs?",
+    "Hvad er reglerne for forlænget tid til eksamen?",
+]
 
 # ---------------------------------------------------------------------------
 # Internationalisation — all UI strings live here
@@ -48,8 +67,9 @@ TEXTS: dict[str, dict[str, str]] = {
         ),
         "search_label": "Stil et sporgsmål om ... ",
         "search_placeholder": "F.eks.: Hvad er reglerne for behandling af personoplysninger?",
-        "search_button": "Sog",
-        "spinner": "Soger i dokumenterne ...",
+        "search_button": "Søg",
+        "example_button": "Tilfaeldigt eksempel",
+        "spinner": "Søger i dokumenterne ...",
         "confidence_label": "Konfidensgrad",
         "intent_label": "Intent",
         "strategy_label": "Strategi",
@@ -119,6 +139,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "search_label": "Ask a question ...",
         "search_placeholder": "E.g.: What are the rules for processing personal data?",
         "search_button": "Search",
+        "example_button": "Random example",
         "spinner": "Searching documents ...",
         "confidence_label": "Confidence",
         "intent_label": "Intent",
@@ -396,12 +417,28 @@ st.markdown(
 # ---------------------------------------------------------------------------
 # Search form
 # ---------------------------------------------------------------------------
-with st.form("search_form"):
-    question = st.text_input(
-        t["search_label"],
-        placeholder=t["search_placeholder"],
-    )
-    search_clicked = st.form_submit_button(t["search_button"])
+if "example_question" not in st.session_state:
+    st.session_state.example_question = ""
+
+def _pick_example() -> None:
+    """Select a random example question and store it in session state."""
+    st.session_state.example_question = random.choice(EXAMPLE_QUESTIONS)
+
+question = st.text_input(
+    t["search_label"],
+    value=st.session_state.example_question,
+    placeholder=t["search_placeholder"],
+)
+
+col_search, col_example = st.columns([1, 1])
+with col_search:
+    search_clicked = st.button(t["search_button"], use_container_width=True)
+with col_example:
+    st.button(t["example_button"], on_click=_pick_example, use_container_width=True)
+
+# Clear the stored example so it doesn't persist across manual edits
+if st.session_state.example_question:
+    st.session_state.example_question = ""
 
 # ---------------------------------------------------------------------------
 # Query logic
