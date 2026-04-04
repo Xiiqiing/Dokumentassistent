@@ -417,16 +417,13 @@ st.markdown(
 # ---------------------------------------------------------------------------
 # Search form
 # ---------------------------------------------------------------------------
-if "example_question" not in st.session_state:
-    st.session_state.example_question = ""
-
 def _pick_example() -> None:
     """Select a random example question and store it in session state."""
-    st.session_state.example_question = random.choice(EXAMPLE_QUESTIONS)
+    st.session_state.query_input = random.choice(EXAMPLE_QUESTIONS)
 
 question = st.text_input(
     t["search_label"],
-    value=st.session_state.example_question,
+    key="query_input",
     placeholder=t["search_placeholder"],
 )
 
@@ -435,10 +432,6 @@ with col_search:
     search_clicked = st.button(t["search_button"], use_container_width=True)
 with col_example:
     st.button(t["example_button"], on_click=_pick_example, use_container_width=True)
-
-# Clear the stored example so it doesn't persist across manual edits
-if st.session_state.example_question:
-    st.session_state.example_question = ""
 
 # ---------------------------------------------------------------------------
 # Query logic
