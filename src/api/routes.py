@@ -90,6 +90,10 @@ class HealthResponse(BaseModel):
 
     status: str
     version: str
+    llm_provider: str = ""
+    llm_model: str = ""
+    embedding_provider: str = ""
+    embedding_model: str = ""
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -99,7 +103,30 @@ async def health_check() -> HealthResponse:
     Returns:
         HealthResponse with service status and version.
     """
-    return HealthResponse(status="ok", version="0.1.0")
+    llm_provider = ""
+    llm_model = ""
+    embedding_provider = ""
+    embedding_model = ""
+    if _settings is not None:
+        llm_provider = _settings.llm_provider
+        embedding_provider = _settings.embedding_provider
+        embedding_model = _settings.embedding_model
+        model_map = {
+            "ollama": _settings.ollama_model,
+            "openai": _settings.openai_model,
+            "azure_openai": _settings.azure_openai_deployment,
+            "anthropic": _settings.anthropic_model,
+            "google_genai": _settings.google_model,
+        }
+        llm_model = model_map.get(llm_provider, _settings.generation_model)
+    return HealthResponse(
+        status="ok",
+        version="0.1.0",
+        llm_provider=llm_provider,
+        llm_model=llm_model,
+        embedding_provider=embedding_provider,
+        embedding_model=embedding_model,
+    )
 
 
 @router.post("/query", response_model=QueryResponse)

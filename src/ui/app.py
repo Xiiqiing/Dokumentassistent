@@ -21,27 +21,22 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "lang_label": "Sprog",
         "sidebar_heading": "Om systemet",
         "sidebar_body": (
-            "Dokumentassistent er et prototypesystem til AI-drevet\n"
-            "dokumentsogning.\n\n"
-            "Systemet anvender en **Retrieval-Augmented Generation (RAG)**\n"
-            "pipeline med folgende komponenter:\n\n"
-            "- **Hybrid search** -- kombination af semantisk vektorsogning\n"
-            "  (Qdrant) og leksikalsk sogning (BM25)\n"
-            "- **Cross-encoder reranking** for praecis relevansvurdering\n"
-            "- **Provider-agnostic arkitektur** -- understotter Ollama,\n"
-            "  OpenAI, Azure OpenAI, Anthropic og Google GenAI\n"
-            "- Dokumenter: offentligt tilgaengelige KU-politikker og\n"
-            "  regelsaet i PDF-format\n\n"
-            "**Vaerktoejer og biblioteker:**\n"
-            "- **LangChain** -- orkestrering af RAG-pipeline\n"
-            "- **FastAPI** -- backend API-server\n"
-            "- **Qdrant** -- vektordatabase til semantisk soegning\n"
-            "- **rank_bm25** -- leksikalsk BM25-soegning\n"
-            "- **Sentence-Transformers** -- cross-encoder reranking\n"
-            "- **PyMuPDF** -- PDF-parsing og tekstudtraek\n"
-            "- **Streamlit** -- frontend brugerflade\n"
-            "- **RAGAS** -- evaluering af hentekvalitet\n"
-            "- **HuggingFace** -- flersprogede embedding-modeller"
+            "End-to-end RAG-prototype der goer dansksproget "
+            "dokumenthaandtering selvbetjent.\n\n"
+            "- **Python + FastAPI** REST-backend\n"
+            "- **Ustruktureret data** — PDF-parsing, preprocessing, "
+            "tre chunking-strategier\n"
+            "- **Embedding-modeller** — flersproget semantisk "
+            "vektorrepraesentation\n"
+            "- **Vektordatabase + hybrid soegning** — Qdrant (semantisk) "
+            "+ BM25 (leksikalsk)\n"
+            "- **Reranking** — cross-encoder for praecis relevans\n"
+            "- **RAG-arkitektur** — LangChain-orkestreret pipeline\n"
+            "- **LLM-integration** — provider-agnostisk, prompt-styret "
+            "svargenerering\n"
+            "- **Evaluering** — RAGAS-baseret kvalitetsmaaling\n"
+            "- **Agent-routing** — intent-klassifikation og "
+            "forespørgselsdirigering"
         ),
         "chunking_label": "Chunking-strategi",
         "chunking_help": "Vaelg hvordan dokumenterne opdeles i tekststykker.",
@@ -71,33 +66,32 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "err_api": "API-fejl",
         "err_timeout": "Forespoorgslen tog for lang tid. Prøv igen.",
         "unknown": "ukendt",
+        "model_heading": "Aktuel model",
+        "model_llm": "LLM",
+        "model_embedding": "Embedding",
+        "model_unavailable": "Kunne ikke hente modelinfo.",
     },
     "en": {
         "page_title": "Document Assistant",
         "lang_label": "Language",
         "sidebar_heading": "About the system",
         "sidebar_body": (
-            "Document Assistant is a prototype system for AI-powered\n"
-            "document search.\n\n"
-            "The system uses a **Retrieval-Augmented Generation (RAG)**\n"
-            "pipeline with the following components:\n\n"
-            "- **Hybrid search** -- combining semantic vector search\n"
-            "  (Qdrant) and lexical search (BM25)\n"
-            "- **Cross-encoder reranking** for precise relevance scoring\n"
-            "- **Provider-agnostic architecture** -- supports Ollama,\n"
-            "  OpenAI, Azure OpenAI, Anthropic, and Google GenAI\n"
-            "- Documents: publicly available KU policies and\n"
-            "  regulations in PDF format\n\n"
-            "**Tools & Libraries:**\n"
-            "- **LangChain** -- RAG pipeline orchestration\n"
-            "- **FastAPI** -- backend API server\n"
-            "- **Qdrant** -- vector database for semantic search\n"
-            "- **rank_bm25** -- lexical BM25 search\n"
-            "- **Sentence-Transformers** -- cross-encoder reranking\n"
-            "- **PyMuPDF** -- PDF parsing and text extraction\n"
-            "- **Streamlit** -- frontend user interface\n"
-            "- **RAGAS** -- retrieval quality evaluation\n"
-            "- **HuggingFace** -- multilingual embedding models"
+            "End-to-end RAG prototype that makes Danish-language "
+            "document Q&A self-service.\n\n"
+            "- **Python + FastAPI** REST backend\n"
+            "- **Unstructured data** — PDF parsing, preprocessing, "
+            "three chunking strategies\n"
+            "- **Embedding models** — multilingual semantic vector "
+            "representations\n"
+            "- **Vector database + hybrid search** — Qdrant (semantic) "
+            "+ BM25 (lexical)\n"
+            "- **Reranking** — cross-encoder for precise relevance\n"
+            "- **RAG architecture** — LangChain-orchestrated pipeline\n"
+            "- **LLM integration** — provider-agnostic, prompt-driven "
+            "answer generation\n"
+            "- **Evaluation** — RAGAS-based quality measurement\n"
+            "- **Agent routing** — intent classification and query "
+            "dispatch"
         ),
         "chunking_label": "Chunking strategy",
         "chunking_help": "Choose how documents are split into text chunks.",
@@ -127,6 +121,10 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "err_api": "API error",
         "err_timeout": "The request took too long. Please try again.",
         "unknown": "unknown",
+        "model_heading": "Current model",
+        "model_llm": "LLM",
+        "model_embedding": "Embedding",
+        "model_unavailable": "Could not fetch model info.",
     },
 }
 
@@ -332,6 +330,26 @@ with st.sidebar:
         value=5,
         help=t["topk_help"],
     )
+
+    st.markdown("---")
+
+    # Fetch and display current model info from backend
+    try:
+        _health = requests.get(f"{API_BASE}/health", timeout=5).json()
+        _llm = _health.get("llm_model", "")
+        _llm_prov = _health.get("llm_provider", "")
+        _emb = _health.get("embedding_model", "")
+        _emb_prov = _health.get("embedding_provider", "")
+        st.markdown(
+            f'<div class="ku-sidebar-heading">{t["model_heading"]}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f'**{t["model_llm"]}:** {_llm} ({_llm_prov})  \n'
+            f'**{t["model_embedding"]}:** {_emb} ({_emb_prov})'
+        )
+    except Exception:
+        st.caption(t["model_unavailable"])
 
 # ---------------------------------------------------------------------------
 # Main content
