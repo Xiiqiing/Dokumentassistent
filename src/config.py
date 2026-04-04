@@ -128,7 +128,7 @@ def load_settings() -> Settings:
 
         # Google GenAI
         google_api_key=os.environ.get("GOOGLE_API_KEY", ""),
-        google_model=os.environ.get("GOOGLE_MODEL", "gemini-2.0-flash"),
+        google_model=os.environ.get("GOOGLE_LLM_MODEL", "gemini-2.5-flash"),
         google_embedding_model=os.environ.get("GOOGLE_EMBEDDING_MODEL", "models/embedding-001"),
 
         # Local embeddings
