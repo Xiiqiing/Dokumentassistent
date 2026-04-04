@@ -423,17 +423,17 @@ def _pick_example() -> None:
     """Select a random example question and store it in session state."""
     st.session_state.query_input = random.choice(EXAMPLE_QUESTIONS)
 
-question = st.text_input(
-    t["search_label"],
-    key="query_input",
-    placeholder=t["search_placeholder"],
-)
-
-col_search, col_example = st.columns([1, 1])
-with col_search:
-    search_clicked = st.button(t["search_button"], use_container_width=True)
-with col_example:
-    st.button(t["example_button"], on_click=_pick_example, use_container_width=True)
+with st.form(key="search_form", clear_on_submit=False):
+    question = st.text_input(
+        t["search_label"],
+        key="query_input",
+        placeholder=t["search_placeholder"],
+    )
+    col_search, col_example = st.columns([1, 1])
+    with col_search:
+        search_clicked = st.form_submit_button(t["search_button"], use_container_width=True)
+    with col_example:
+        st.form_submit_button(t["example_button"], on_click=_pick_example, use_container_width=True)
 
 # ---------------------------------------------------------------------------
 # Query logic
