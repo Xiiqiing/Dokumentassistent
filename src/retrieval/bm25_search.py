@@ -1,7 +1,12 @@
 """BM25 sparse retrieval using rank_bm25."""
 
 import logging
+from typing import Any
 
+from langchain_core.callbacks import CallbackManagerForRetrieverRun
+from langchain_core.documents import Document
+from langchain_core.retrievers import BaseRetriever
+from pydantic import ConfigDict
 from rank_bm25 import BM25Okapi
 
 from src.models import DocumentChunk, QueryResult
@@ -59,6 +64,17 @@ class BM25Search:
         logger.debug("BM25 search returned %d results for query: %s", len(results), query)
         return results
 
+    def as_retriever(self, top_k: int) -> BaseRetriever:
+        """Return a LangChain BaseRetriever wrapping this BM25 index.
+
+        Args:
+            top_k: Number of results to return per query.
+
+        Returns:
+            A BaseRetriever that calls search() and returns Documents.
+        """
+        return _BM25RetrieverAdapter(bm25_search=self, top_k=top_k)
+
     @staticmethod
     def _tokenize(text: str) -> list[str]:
         """Tokenize text by lowercasing and splitting on whitespace.
@@ -70,3 +86,30 @@ class BM25Search:
             List of lowercase tokens.
         """
         return text.lower().split()
+
+
+class _BM25RetrieverAdapter(BaseRetriever):
+    """LangChain BaseRetriever adapter over BM25Search."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    bm25_search: Any
+    top_k: int
+
+    def _get_relevant_documents(
+        self, query: str, *, run_manager: CallbackManagerForRetrieverRun
+    ) -> list[Document]:
+        results = self.bm25_search.search(query, self.top_k)
+        return [
+            Document(
+                page_content=r.chunk.text,
+                metadata={
+                    "chunk_id": r.chunk.chunk_id,
+                    "document_id": r.chunk.document_id,
+                    "chunk_metadata": r.chunk.metadata,
+                    "strategy": r.chunk.strategy.value,
+                    "score": r.score,
+                },
+            )
+            for r in results
+        ]

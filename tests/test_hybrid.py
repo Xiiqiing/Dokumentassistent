@@ -4,7 +4,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.models import DocumentChunk, QueryResult
+from langchain_core.documents import Document
+
+from src.models import ChunkStrategy, DocumentChunk, QueryResult
 from src.retrieval.hybrid import HybridRetriever
 
 
@@ -14,21 +16,44 @@ def _make_result(chunk_id: str, score: float = 0.0, source: str = "test") -> Que
     return QueryResult(chunk=chunk, score=score, source=source)
 
 
+def _result_to_doc(result: QueryResult) -> Document:
+    """Convert a QueryResult to a LangChain Document (mirrors the adapter output)."""
+    return Document(
+        page_content=result.chunk.text,
+        metadata={
+            "chunk_id": result.chunk.chunk_id,
+            "document_id": result.chunk.document_id,
+            "chunk_metadata": result.chunk.metadata,
+            "strategy": result.chunk.strategy.value,
+            "score": result.score,
+        },
+    )
+
+
 def _build_retriever(
     dense_results: list[QueryResult],
     sparse_results: list[QueryResult],
     dense_weight: float = 1.0,
     bm25_weight: float = 1.0,
 ) -> HybridRetriever:
-    """Build a HybridRetriever with mocked dependencies."""
+    """Build a HybridRetriever with mocked dependencies.
+
+    Mocks as_retriever().invoke() since HybridRetriever now uses the
+    LangChain BaseRetriever interface instead of .search() directly.
+    """
+    dense_retriever_mock = MagicMock()
+    dense_retriever_mock.invoke.return_value = [_result_to_doc(r) for r in dense_results]
+
     vector_store = MagicMock()
-    vector_store.search.return_value = dense_results
+    vector_store.as_retriever.return_value = dense_retriever_mock
+
+    sparse_retriever_mock = MagicMock()
+    sparse_retriever_mock.invoke.return_value = [_result_to_doc(r) for r in sparse_results]
 
     bm25_search = MagicMock()
-    bm25_search.search.return_value = sparse_results
+    bm25_search.as_retriever.return_value = sparse_retriever_mock
 
     embedder = MagicMock()
-    embedder.embed_text.return_value = [0.0] * 1536
 
     return HybridRetriever(
         vector_store=vector_store,

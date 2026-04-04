@@ -53,7 +53,7 @@ class FixedSizeChunker(BaseChunker):
     def chunk(
         self, text: str, document_id: str, metadata: dict[str, str | int]
     ) -> list[DocumentChunk]:
-        """Split text into fixed-size chunks.
+        """Split text into fixed-size chunks using LangChain CharacterTextSplitter.
 
         Args:
             text: The full text to chunk.
@@ -63,21 +63,24 @@ class FixedSizeChunker(BaseChunker):
         Returns:
             List of DocumentChunk with strategy=FIXED_SIZE.
         """
-        chunks: list[DocumentChunk] = []
-        start = 0
-        index = 0
-        while start < len(text):
-            end = start + self.chunk_size
-            chunk_text = text[start:end]
-            chunks.append(DocumentChunk(
+        from langchain_text_splitters import CharacterTextSplitter
+
+        splitter = CharacterTextSplitter(
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+            separator="",
+        )
+        texts = splitter.split_text(text)
+        chunks = [
+            DocumentChunk(
                 chunk_id=_make_chunk_id(document_id, index),
                 document_id=document_id,
                 text=chunk_text,
                 metadata={**metadata, "chunk_index": index},
                 strategy=ChunkStrategy.FIXED_SIZE,
-            ))
-            index += 1
-            start += self.chunk_size - self.chunk_overlap
+            )
+            for index, chunk_text in enumerate(texts)
+        ]
         logger.debug("FixedSizeChunker produced %d chunks for %s", len(chunks), document_id)
         return chunks
 
