@@ -155,5 +155,5 @@ scripts/
   ingest.py                # CLI document ingestion
   e2e_test.py              # End-to-end integration test
 tests/                     # pytest test suite
-docs/                      # Danish policy PDFs (KU public documents)
+docs/                      # Example PDFs/Texts (KU AI public documents)
 ```
