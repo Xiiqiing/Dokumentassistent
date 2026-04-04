@@ -40,7 +40,7 @@ class QueryRouter:
         self._hybrid_retriever = hybrid_retriever
         self._reranker = reranker
         self._generator = generator
-        self._translate_query = translate_query
+        self._translate_query_enabled = translate_query
 
     @staticmethod
     def _detect_script(text: str) -> str | None:
@@ -83,47 +83,81 @@ class QueryRouter:
             return "Chinese"
         return dominant
 
-    def _detect_and_translate_query(self, query: str) -> tuple[str, str]:
-        """Detect the query language and optionally translate to Danish.
+    def _detect_language_and_intent(self, query: str) -> tuple[str, IntentType]:
+        """Detect the query language and classify intent in a single LLM call.
 
-        Uses Unicode script detection first for non-Latin scripts (Chinese,
-        Japanese, Korean, Arabic, etc.) which are reliably identifiable from
-        character ranges. Falls back to LLM-based detection for Latin-script
-        languages.
-
-        Translation is only performed when ``self._translate_query`` is True and
-        the detected language is not Danish.
+        Uses Unicode script detection first for non-Latin scripts.  For
+        Latin-script text, a single LLM call returns both language and intent,
+        saving one full round-trip compared to two separate calls.
 
         Args:
             query: The user's original query.
 
         Returns:
-            Tuple of (retrieval_query, detected_language).
-            retrieval_query is Danish when translation is enabled; otherwise the
-            original query. detected_language is e.g. "English", "Danish".
+            Tuple of (detected_language, intent).
         """
         # Fast path: detect non-Latin scripts via Unicode
-        detected = self._detect_script(query)
+        script_language = self._detect_script(query)
 
-        if detected is None:
-            # Latin-script text — use LLM for detection
-            prompt = (
-                "Detect the language of the following text. "
-                "Reply with ONLY the language name in English "
-                "(e.g. 'Danish', 'English', 'German'). "
-                "Nothing else.\n\n"
-                f"Text: {query}"
-            )
-            detected = str(self._generator.invoke(prompt)).strip().strip(".")
+        if script_language is not None:
+            # Language is known; still need intent from LLM
+            intent = self._intent_classifier.classify(query)
+            logger.info("Detected query language: %s", script_language)
+            logger.info("Classified intent: %s", intent.value)
+            return script_language, intent
 
+        # Latin-script text — combine language detection + intent classification
+        valid_intents = "factual, summary, comparison, procedural, unknown"
+        prompt = (
+            "You are given a user query. Do TWO things:\n"
+            "1. Detect the language of the query (reply with the language name in English, "
+            "e.g. 'Danish', 'English', 'German').\n"
+            "2. Classify the intent into exactly one of: "
+            f"{valid_intents}.\n\n"
+            "Reply with EXACTLY two lines, nothing else:\n"
+            "language: <language>\n"
+            "intent: <intent>\n\n"
+            f"Query: {query}"
+        )
+        raw = str(self._generator.invoke(prompt)).strip()
+        logger.debug("Combined detection raw response: %s", raw)
+
+        # Parse response
+        detected = "Danish"
+        intent = IntentType.UNKNOWN
+        for line in raw.splitlines():
+            line = line.strip().lower()
+            if line.startswith("language:"):
+                detected = line.split(":", 1)[1].strip().strip(".")
+            elif line.startswith("intent:"):
+                raw_intent = line.split(":", 1)[1].strip().strip(".")
+                if raw_intent in {i.value for i in IntentType}:
+                    intent = IntentType(raw_intent)
+                else:
+                    logger.warning("Unrecognized intent '%s' from combined call, falling back to UNKNOWN", raw_intent)
+
+        # Capitalize language name for display
+        detected = detected.capitalize()
         logger.info("Detected query language: %s", detected)
+        logger.info("Classified intent: %s", intent.value)
+        return detected, intent
 
-        if detected.lower() in ("danish", "dansk"):
-            return query, "Danish"
+    def _translate_query(self, query: str, detected_language: str) -> str:
+        """Translate the query to Danish if needed.
 
-        if not self._translate_query:
+        Args:
+            query: The user's original query.
+            detected_language: Detected language of the query.
+
+        Returns:
+            The Danish retrieval query, or the original if already Danish.
+        """
+        if detected_language.lower() in ("danish", "dansk"):
+            return query
+
+        if not self._translate_query_enabled:
             logger.info("Query translation disabled; using original query for retrieval")
-            return query, detected
+            return query
 
         translate_prompt = (
             "Translate the following text to Danish. "
@@ -132,7 +166,7 @@ class QueryRouter:
         )
         translated = str(self._generator.invoke(translate_prompt)).strip()
         logger.info("Translated query to Danish: %s", translated)
-        return translated, detected
+        return translated
 
     def route(self, query: str, top_k: int) -> GenerationResponse:
         """Route a query through the full RAG pipeline.
@@ -146,11 +180,11 @@ class QueryRouter:
         """
         logger.info("Routing query: %s", query)
 
-        # Detect language and translate to Danish for retrieval if needed
-        retrieval_query, user_language = self._detect_and_translate_query(query)
+        # Single LLM call for both language detection and intent classification
+        user_language, intent = self._detect_language_and_intent(query)
+        retrieval_query = self._translate_query(query, user_language)
         translated = retrieval_query != query
 
-        intent = self._intent_classifier.classify(query)
         logger.info("Classified intent: %s", intent.value)
         logger.debug("Intent classification result: %s for query='%s'", intent.value, query)
 

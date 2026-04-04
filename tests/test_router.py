@@ -43,36 +43,49 @@ def mock_components():
     return classifier, retriever, reranker, generator
 
 
-def _setup_generator_danish(generator: MagicMock, final_answer: str) -> None:
-    """Configure generator mock for Danish queries (no translation needed)."""
-    generator.invoke.side_effect = ["Danish", final_answer]
+def _setup_generator_danish(
+    generator: MagicMock, final_answer: str, intent: str = "factual"
+) -> None:
+    """Configure generator mock for Danish queries (no translation needed).
+
+    The first invoke returns the combined language+intent response,
+    the second invoke returns the final answer.
+    """
+    combined = f"language: Danish\nintent: {intent}"
+    generator.invoke.side_effect = [combined, final_answer]
 
 
-def _setup_generator_english(generator: MagicMock, translated_query: str, final_answer: str) -> None:
-    """Configure generator mock for English queries (detection + translation + answer)."""
-    generator.invoke.side_effect = ["English", translated_query, final_answer]
+def _setup_generator_english(
+    generator: MagicMock, translated_query: str, final_answer: str, intent: str = "rag"
+) -> None:
+    """Configure generator mock for English queries (combined detection + translation + answer).
+
+    The first invoke returns combined language+intent, the second returns the
+    translated query, and the third returns the final answer.
+    """
+    combined = f"language: English\nintent: {intent}"
+    generator.invoke.side_effect = [combined, translated_query, final_answer]
 
 
 class TestQueryRouterRAG:
     """Tests for queries routed as RAG (factual/summary/comparison/procedural)."""
 
-    @pytest.mark.parametrize("intent,expected_intent", [
-        (IntentType.FACTUAL, IntentType.RAG),  # FACTUAL overridden to RAG when sources exist
-        (IntentType.SUMMARY, IntentType.SUMMARY),
-        (IntentType.COMPARISON, IntentType.COMPARISON),
-        (IntentType.PROCEDURAL, IntentType.PROCEDURAL),
+    @pytest.mark.parametrize("intent_str,expected_intent", [
+        ("factual", IntentType.RAG),  # FACTUAL overridden to RAG when sources exist
+        ("summary", IntentType.SUMMARY),
+        ("comparison", IntentType.COMPARISON),
+        ("procedural", IntentType.PROCEDURAL),
     ])
     def test_rag_intent_returns_answer_with_sources(
-        self, mock_components, intent: IntentType, expected_intent: IntentType
+        self, mock_components, intent_str: str, expected_intent: IntentType
     ) -> None:
         """RAG intents should retrieve, rerank, and generate an answer."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = intent
 
         results = [_make_query_result("policy text", 0.85)]
         retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
-        _setup_generator_danish(generator, "Generated answer")
+        _setup_generator_danish(generator, "Generated answer", intent=intent_str)
 
         router = QueryRouter(classifier, retriever, reranker, generator)
         response = router.route("Hvad er KU's feriepolitik?", top_k=3)
@@ -93,12 +106,11 @@ class TestQueryRouterRAG:
     def test_prompt_contains_context_and_query(self, mock_components) -> None:
         """The prompt sent to the generator should include context and query."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = IntentType.FACTUAL
 
         results = [_make_query_result("Relevant context text", 0.9)]
         retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
-        _setup_generator_danish(generator, "answer")
+        _setup_generator_danish(generator, "answer", intent="factual")
 
         router = QueryRouter(classifier, retriever, reranker, generator)
         router.route("test query", top_k=3)
@@ -111,12 +123,11 @@ class TestQueryRouterRAG:
     def test_prompt_contains_language_rule(self, mock_components) -> None:
         """The prompt should contain a language instruction matching user language."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = IntentType.RAG
 
         results = [_make_query_result("ctx", 0.5)]
         retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
-        _setup_generator_english(generator, "oversæt forespørgsel", "answer")
+        _setup_generator_english(generator, "oversæt forespørgsel", "answer", intent="rag")
 
         router = QueryRouter(classifier, retriever, reranker, generator)
         router.route("What is KU's vacation policy?", top_k=3)
@@ -131,10 +142,9 @@ class TestQueryRouterDirect:
     def test_unknown_intent_still_generates_answer(self, mock_components) -> None:
         """UNKNOWN intent skips retrieval and returns zero confidence."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = IntentType.UNKNOWN
 
         reranker.rerank.return_value = []
-        _setup_generator_danish(generator, "Fallback answer")
+        _setup_generator_danish(generator, "Fallback answer", intent="unknown")
 
         router = QueryRouter(classifier, retriever, reranker, generator)
         response = router.route("Hej, hvad kan du hjælpe med?", top_k=3)
@@ -149,10 +159,9 @@ class TestQueryRouterDirect:
     ) -> None:
         """UNKNOWN intent should use the generic helpful instruction."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = IntentType.UNKNOWN
 
         reranker.rerank.return_value = []
-        _setup_generator_danish(generator, "answer")
+        _setup_generator_danish(generator, "answer", intent="unknown")
 
         router = QueryRouter(classifier, retriever, reranker, generator)
         router.route("random input", top_k=3)
@@ -169,11 +178,10 @@ class TestQueryRouterFallback:
     ) -> None:
         """When reranker returns no results, confidence should be 0.0."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = IntentType.FACTUAL
 
         retriever.search_detailed.return_value = _make_hybrid_result([])
         reranker.rerank.return_value = []
-        _setup_generator_danish(generator, "No information found")
+        _setup_generator_danish(generator, "No information found", intent="factual")
 
         router = QueryRouter(classifier, retriever, reranker, generator)
         response = router.route("asdfghjkl", top_k=3)
@@ -185,11 +193,10 @@ class TestQueryRouterFallback:
     def test_empty_context_passed_to_generator(self, mock_components) -> None:
         """When no chunks are retrieved, the prompt context should be empty."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = IntentType.FACTUAL
 
         retriever.search_detailed.return_value = _make_hybrid_result([])
         reranker.rerank.return_value = []
-        _setup_generator_danish(generator, "answer")
+        _setup_generator_danish(generator, "answer", intent="factual")
 
         router = QueryRouter(classifier, retriever, reranker, generator)
         router.route("gibberish", top_k=3)
@@ -202,7 +209,6 @@ class TestQueryRouterFallback:
     ) -> None:
         """Confidence should be the maximum score among reranked results."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = IntentType.SUMMARY
 
         results = [
             _make_query_result("low", 0.3),
@@ -211,7 +217,7 @@ class TestQueryRouterFallback:
         ]
         retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
-        _setup_generator_danish(generator, "summary")
+        _setup_generator_danish(generator, "summary", intent="summary")
 
         router = QueryRouter(classifier, retriever, reranker, generator)
         response = router.route("opsummer politikken", top_k=5)
@@ -225,34 +231,32 @@ class TestQueryTranslation:
     def test_danish_query_not_translated(self, mock_components) -> None:
         """Danish queries should be passed directly to retrieval without translation."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = IntentType.RAG
 
         results = [_make_query_result("ctx", 0.5)]
         retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
-        _setup_generator_danish(generator, "svar")
+        _setup_generator_danish(generator, "svar", intent="rag")
 
         router = QueryRouter(classifier, retriever, reranker, generator)
         router.route("Hvad er reglerne?", top_k=3)
 
-        # Only 2 invoke calls: language detection + generation (no translation)
+        # Only 2 invoke calls: combined detection + generation (no translation)
         assert generator.invoke.call_count == 2
         retriever.search_detailed.assert_called_once_with("Hvad er reglerne?", top_k=3)
 
     def test_english_query_translated_for_retrieval(self, mock_components) -> None:
         """English queries should be translated to Danish for retrieval."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = IntentType.RAG
 
         results = [_make_query_result("ctx", 0.5)]
         retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
-        _setup_generator_english(generator, "Hvad er reglerne?", "The rules are...")
+        _setup_generator_english(generator, "Hvad er reglerne?", "The rules are...", intent="rag")
 
         router = QueryRouter(classifier, retriever, reranker, generator, translate_query=True)
         response = router.route("What are the rules?", top_k=3)
 
-        # 3 invoke calls: detection + translation + generation
+        # 3 invoke calls: combined detection + translation + generation
         assert generator.invoke.call_count == 3
         retriever.search_detailed.assert_called_once_with("Hvad er reglerne?", top_k=3)
         reranker.rerank.assert_called_once_with("Hvad er reglerne?", results, top_k=3)
@@ -261,13 +265,13 @@ class TestQueryTranslation:
     def test_translation_disabled_skips_translate(self, mock_components) -> None:
         """When translate_query=False, English queries go straight to retrieval untranslated."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = IntentType.RAG
 
         results = [_make_query_result("ctx", 0.5)]
         retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
-        # Only 2 calls: detection + generation (no translation)
-        generator.invoke.side_effect = ["English", "The answer"]
+        # Only 2 calls: combined detection + generation (no translation)
+        combined = "language: English\nintent: rag"
+        generator.invoke.side_effect = [combined, "The answer"]
 
         router = QueryRouter(classifier, retriever, reranker, generator, translate_query=False)
         response = router.route("What are the rules?", top_k=3)
@@ -283,7 +287,6 @@ class TestSigmoidInReranker:
     def test_confidence_equals_max_reranked_score(self, mock_components) -> None:
         """Confidence should equal the max reranked score (already sigmoid-normalized)."""
         classifier, retriever, reranker, generator = mock_components
-        classifier.classify.return_value = IntentType.RAG
 
         results = [
             _make_query_result("a", 0.7),
@@ -291,7 +294,7 @@ class TestSigmoidInReranker:
         ]
         retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
-        generator.invoke.side_effect = ["Danish", "answer"]
+        _setup_generator_danish(generator, "answer", intent="rag")
 
         router = QueryRouter(classifier, retriever, reranker, generator)
         response = router.route("test", top_k=3)
