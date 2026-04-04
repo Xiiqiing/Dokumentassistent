@@ -229,7 +229,8 @@ async def ingest_document(request: IngestRequest) -> IngestResponse:
     if chunks:
         embeddings = _embedder.embed_batch([chunk.text for chunk in chunks])
         _vector_store.add_chunks(chunks, embeddings)
-        _bm25_search.index(chunks)
+        all_chunks = _vector_store.get_all_chunks()
+        _bm25_search.index(all_chunks)
 
     document_id = os.path.basename(request.file_path)
     logger.info("Ingested %d chunks for document %s", len(chunks), document_id)

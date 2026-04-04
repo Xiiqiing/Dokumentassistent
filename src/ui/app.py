@@ -5,7 +5,6 @@ Single-page document search interface with clean sans-serif design.
 """
 
 import os
-from typing import Dict
 
 import streamlit as st
 import requests
@@ -15,7 +14,7 @@ API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000")
 # ---------------------------------------------------------------------------
 # Internationalisation — all UI strings live here
 # ---------------------------------------------------------------------------
-TEXTS: Dict[str, Dict[str, str]] = {
+TEXTS: dict[str, dict[str, str]] = {
     "da": {
         "page_title": "Dokumentassistent",
         "lang_label": "Sprog",

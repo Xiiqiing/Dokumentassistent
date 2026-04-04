@@ -1,7 +1,6 @@
 """Tests for query router with mock LLM and components."""
 
-import math
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -25,8 +24,13 @@ def _make_query_result(text: str, score: float) -> QueryResult:
     return QueryResult(chunk=chunk, score=score, source="hybrid")
 
 
-def _sigmoid(x: float) -> float:
-    return 1.0 / (1.0 + math.exp(-x))
+def _make_hybrid_result(results: list[QueryResult]) -> MagicMock:
+    """Create a mock HybridSearchResult."""
+    hybrid = MagicMock()
+    hybrid.dense_results = results
+    hybrid.sparse_results = results
+    hybrid.fused_results = results
+    return hybrid
 
 
 @pytest.fixture
@@ -66,7 +70,7 @@ class TestQueryRouterRAG:
         classifier.classify.return_value = intent
 
         results = [_make_query_result("policy text", 0.85)]
-        retriever.search.return_value = results
+        retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
         _setup_generator_danish(generator, "Generated answer")
 
@@ -76,10 +80,10 @@ class TestQueryRouterRAG:
         assert isinstance(response, GenerationResponse)
         assert response.answer == "Generated answer"
         assert response.intent == expected_intent
-        assert response.confidence == pytest.approx(_sigmoid(0.85), abs=1e-6)
+        assert response.confidence == pytest.approx(0.85, abs=1e-6)
         assert len(response.sources) == 1
 
-        retriever.search.assert_called_once_with(
+        retriever.search_detailed.assert_called_once_with(
             "Hvad er KU's feriepolitik?", top_k=3
         )
         reranker.rerank.assert_called_once_with(
@@ -92,7 +96,7 @@ class TestQueryRouterRAG:
         classifier.classify.return_value = IntentType.FACTUAL
 
         results = [_make_query_result("Relevant context text", 0.9)]
-        retriever.search.return_value = results
+        retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
         _setup_generator_danish(generator, "answer")
 
@@ -110,7 +114,7 @@ class TestQueryRouterRAG:
         classifier.classify.return_value = IntentType.RAG
 
         results = [_make_query_result("ctx", 0.5)]
-        retriever.search.return_value = results
+        retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
         _setup_generator_english(generator, "oversæt forespørgsel", "answer")
 
@@ -129,7 +133,6 @@ class TestQueryRouterDirect:
         classifier, retriever, reranker, generator = mock_components
         classifier.classify.return_value = IntentType.UNKNOWN
 
-        retriever.search.return_value = []
         reranker.rerank.return_value = []
         _setup_generator_danish(generator, "Fallback answer")
 
@@ -139,7 +142,7 @@ class TestQueryRouterDirect:
         assert response.answer == "Fallback answer"
         assert response.intent == IntentType.UNKNOWN
         assert response.confidence == 0.0
-        retriever.search.assert_not_called()
+        retriever.search_detailed.assert_not_called()
 
     def test_unknown_intent_prompt_uses_generic_instruction(
         self, mock_components
@@ -148,9 +151,7 @@ class TestQueryRouterDirect:
         classifier, retriever, reranker, generator = mock_components
         classifier.classify.return_value = IntentType.UNKNOWN
 
-        results = [_make_query_result("ctx", 0.5)]
-        retriever.search.return_value = results
-        reranker.rerank.return_value = results
+        reranker.rerank.return_value = []
         _setup_generator_danish(generator, "answer")
 
         router = QueryRouter(classifier, retriever, reranker, generator)
@@ -170,7 +171,7 @@ class TestQueryRouterFallback:
         classifier, retriever, reranker, generator = mock_components
         classifier.classify.return_value = IntentType.FACTUAL
 
-        retriever.search.return_value = []
+        retriever.search_detailed.return_value = _make_hybrid_result([])
         reranker.rerank.return_value = []
         _setup_generator_danish(generator, "No information found")
 
@@ -186,7 +187,7 @@ class TestQueryRouterFallback:
         classifier, retriever, reranker, generator = mock_components
         classifier.classify.return_value = IntentType.FACTUAL
 
-        retriever.search.return_value = []
+        retriever.search_detailed.return_value = _make_hybrid_result([])
         reranker.rerank.return_value = []
         _setup_generator_danish(generator, "answer")
 
@@ -199,7 +200,7 @@ class TestQueryRouterFallback:
     def test_multiple_results_confidence_uses_max_score(
         self, mock_components
     ) -> None:
-        """Confidence should be sigmoid of the maximum score among reranked results."""
+        """Confidence should be the maximum score among reranked results."""
         classifier, retriever, reranker, generator = mock_components
         classifier.classify.return_value = IntentType.SUMMARY
 
@@ -208,14 +209,14 @@ class TestQueryRouterFallback:
             _make_query_result("high", 0.95),
             _make_query_result("mid", 0.6),
         ]
-        retriever.search.return_value = results
+        retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
         _setup_generator_danish(generator, "summary")
 
         router = QueryRouter(classifier, retriever, reranker, generator)
         response = router.route("opsummer politikken", top_k=5)
 
-        assert response.confidence == pytest.approx(_sigmoid(0.95), abs=1e-6)
+        assert response.confidence == pytest.approx(0.95, abs=1e-6)
 
 
 class TestQueryTranslation:
@@ -227,7 +228,7 @@ class TestQueryTranslation:
         classifier.classify.return_value = IntentType.RAG
 
         results = [_make_query_result("ctx", 0.5)]
-        retriever.search.return_value = results
+        retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
         _setup_generator_danish(generator, "svar")
 
@@ -236,7 +237,7 @@ class TestQueryTranslation:
 
         # Only 2 invoke calls: language detection + generation (no translation)
         assert generator.invoke.call_count == 2
-        retriever.search.assert_called_once_with("Hvad er reglerne?", top_k=3)
+        retriever.search_detailed.assert_called_once_with("Hvad er reglerne?", top_k=3)
 
     def test_english_query_translated_for_retrieval(self, mock_components) -> None:
         """English queries should be translated to Danish for retrieval."""
@@ -244,7 +245,7 @@ class TestQueryTranslation:
         classifier.classify.return_value = IntentType.RAG
 
         results = [_make_query_result("ctx", 0.5)]
-        retriever.search.return_value = results
+        retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
         _setup_generator_english(generator, "Hvad er reglerne?", "The rules are...")
 
@@ -253,7 +254,7 @@ class TestQueryTranslation:
 
         # 3 invoke calls: detection + translation + generation
         assert generator.invoke.call_count == 3
-        retriever.search.assert_called_once_with("Hvad er reglerne?", top_k=3)
+        retriever.search_detailed.assert_called_once_with("Hvad er reglerne?", top_k=3)
         reranker.rerank.assert_called_once_with("Hvad er reglerne?", results, top_k=3)
         assert response.answer == "The rules are..."
 
@@ -263,7 +264,7 @@ class TestQueryTranslation:
         classifier.classify.return_value = IntentType.RAG
 
         results = [_make_query_result("ctx", 0.5)]
-        retriever.search.return_value = results
+        retriever.search_detailed.return_value = _make_hybrid_result(results)
         reranker.rerank.return_value = results
         # Only 2 calls: detection + generation (no translation)
         generator.invoke.side_effect = ["English", "The answer"]
@@ -272,23 +273,27 @@ class TestQueryTranslation:
         response = router.route("What are the rules?", top_k=3)
 
         assert generator.invoke.call_count == 2
-        retriever.search.assert_called_once_with("What are the rules?", top_k=3)
+        retriever.search_detailed.assert_called_once_with("What are the rules?", top_k=3)
         assert response.answer == "The answer"
 
 
-class TestSigmoidNormalize:
-    """Tests for the sigmoid normalization static method."""
+class TestSigmoidInReranker:
+    """Tests that sigmoid normalization is in the reranker, not the router."""
 
-    def test_zero_score(self) -> None:
-        assert QueryRouter._sigmoid_normalize(0.0) == pytest.approx(0.5)
+    def test_confidence_equals_max_reranked_score(self, mock_components) -> None:
+        """Confidence should equal the max reranked score (already sigmoid-normalized)."""
+        classifier, retriever, reranker, generator = mock_components
+        classifier.classify.return_value = IntentType.RAG
 
-    def test_large_positive_score(self) -> None:
-        assert QueryRouter._sigmoid_normalize(10.0) == pytest.approx(1.0, abs=1e-4)
+        results = [
+            _make_query_result("a", 0.7),
+            _make_query_result("b", 0.9),
+        ]
+        retriever.search_detailed.return_value = _make_hybrid_result(results)
+        reranker.rerank.return_value = results
+        generator.invoke.side_effect = ["Danish", "answer"]
 
-    def test_large_negative_score(self) -> None:
-        assert QueryRouter._sigmoid_normalize(-10.0) == pytest.approx(0.0, abs=1e-4)
+        router = QueryRouter(classifier, retriever, reranker, generator)
+        response = router.route("test", top_k=3)
 
-    def test_moderate_score(self) -> None:
-        assert QueryRouter._sigmoid_normalize(2.0) == pytest.approx(
-            1.0 / (1.0 + math.exp(-2.0)), abs=1e-6
-        )
+        assert response.confidence == pytest.approx(0.9, abs=1e-6)

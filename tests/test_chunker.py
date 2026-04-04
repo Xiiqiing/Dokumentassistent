@@ -151,15 +151,12 @@ class TestRecursiveChunker:
 
 
 # ---------------------------------------------------------------------------
-# SemanticChunker (requires mocking OpenAI embeddings)
+# SemanticChunker (requires a mock embeddings instance)
 # ---------------------------------------------------------------------------
 
 class TestSemanticChunker:
-    @patch("src.ingestion.chunker.OpenAIEmbeddings")
     @patch("src.ingestion.chunker.LCSemanticChunker")
-    def test_output_format(
-        self, mock_lc_chunker_cls: MagicMock, mock_embeddings_cls: MagicMock
-    ) -> None:
+    def test_output_format(self, mock_lc_chunker_cls: MagicMock) -> None:
         fake_doc_1 = MagicMock()
         fake_doc_1.page_content = "Første del af teksten."
         fake_doc_2 = MagicMock()
@@ -169,7 +166,8 @@ class TestSemanticChunker:
             fake_doc_2,
         ]
 
-        chunker = SemanticChunker(chunk_size=100, chunk_overlap=20)
+        mock_embeddings = MagicMock()
+        chunker = SemanticChunker(chunk_size=100, chunk_overlap=20, embeddings=mock_embeddings)
         chunks = chunker.chunk(DANISH_TEXT, DOC_ID, META)
 
         _assert_valid_chunks(chunks, ChunkStrategy.SEMANTIC)
@@ -177,42 +175,36 @@ class TestSemanticChunker:
         assert chunks[0].text == "Første del af teksten."
         assert chunks[1].text == "Anden del af teksten."
 
-    @patch("src.ingestion.chunker.OpenAIEmbeddings")
     @patch("src.ingestion.chunker.LCSemanticChunker")
-    def test_empty_text(
-        self, mock_lc_chunker_cls: MagicMock, mock_embeddings_cls: MagicMock
-    ) -> None:
+    def test_empty_text(self, mock_lc_chunker_cls: MagicMock) -> None:
         mock_lc_chunker_cls.return_value.create_documents.return_value = []
-        chunker = SemanticChunker(chunk_size=100, chunk_overlap=20)
+        mock_embeddings = MagicMock()
+        chunker = SemanticChunker(chunk_size=100, chunk_overlap=20, embeddings=mock_embeddings)
         chunks = chunker.chunk("", DOC_ID, META)
         assert chunks == []
 
-    @patch("src.ingestion.chunker.OpenAIEmbeddings")
     @patch("src.ingestion.chunker.LCSemanticChunker")
-    def test_short_text(
-        self, mock_lc_chunker_cls: MagicMock, mock_embeddings_cls: MagicMock
-    ) -> None:
+    def test_short_text(self, mock_lc_chunker_cls: MagicMock) -> None:
         fake_doc = MagicMock()
         fake_doc.page_content = "Hej"
         mock_lc_chunker_cls.return_value.create_documents.return_value = [fake_doc]
 
-        chunker = SemanticChunker(chunk_size=500, chunk_overlap=50)
+        mock_embeddings = MagicMock()
+        chunker = SemanticChunker(chunk_size=500, chunk_overlap=50, embeddings=mock_embeddings)
         chunks = chunker.chunk("Hej", DOC_ID, META)
         assert len(chunks) == 1
         assert chunks[0].text == "Hej"
         assert chunks[0].strategy == ChunkStrategy.SEMANTIC
 
-    @patch("src.ingestion.chunker.OpenAIEmbeddings")
     @patch("src.ingestion.chunker.LCSemanticChunker")
-    def test_danish_characters_preserved(
-        self, mock_lc_chunker_cls: MagicMock, mock_embeddings_cls: MagicMock
-    ) -> None:
+    def test_danish_characters_preserved(self, mock_lc_chunker_cls: MagicMock) -> None:
         text = "Ændringsforslag vedrørende årsregnskabet"
         fake_doc = MagicMock()
         fake_doc.page_content = text
         mock_lc_chunker_cls.return_value.create_documents.return_value = [fake_doc]
 
-        chunker = SemanticChunker(chunk_size=500, chunk_overlap=0)
+        mock_embeddings = MagicMock()
+        chunker = SemanticChunker(chunk_size=500, chunk_overlap=0, embeddings=mock_embeddings)
         chunks = chunker.chunk(text, DOC_ID, META)
         assert chunks[0].text == text
 
@@ -231,8 +223,13 @@ class TestCreateChunker:
         assert isinstance(chunker, RecursiveChunker)
 
     def test_semantic(self) -> None:
-        chunker = create_chunker(ChunkStrategy.SEMANTIC, 100, 20)
+        mock_embeddings = MagicMock()
+        chunker = create_chunker(ChunkStrategy.SEMANTIC, 100, 20, embeddings=mock_embeddings)
         assert isinstance(chunker, SemanticChunker)
+
+    def test_semantic_without_embeddings_raises(self) -> None:
+        with pytest.raises(ValueError, match="Embeddings instance is required"):
+            create_chunker(ChunkStrategy.SEMANTIC, 100, 20)
 
     def test_unknown_strategy_raises(self) -> None:
         with pytest.raises(ValueError, match="Unknown chunking strategy"):

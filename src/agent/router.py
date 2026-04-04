@@ -1,7 +1,6 @@
 """Query router that selects retrieval strategy based on intent."""
 
 import logging
-import math
 import unicodedata
 
 from langchain_core.runnables import Runnable
@@ -135,15 +134,6 @@ class QueryRouter:
         logger.info("Translated query to Danish: %s", translated)
         return translated, detected
 
-    @staticmethod
-    def _sigmoid_normalize(score: float) -> float:
-        """Normalize a raw cross-encoder score to 0-1 via sigmoid.
-
-        Clamps the input to [-500, 500] to avoid math overflow.
-        """
-        score = max(-500.0, min(500.0, score))
-        return 1.0 / (1.0 + math.exp(-score))
-
     def route(self, query: str, top_k: int) -> GenerationResponse:
         """Route a query through the full RAG pipeline.
 
@@ -162,10 +152,10 @@ class QueryRouter:
 
         intent = self._intent_classifier.classify(query)
         logger.info("Classified intent: %s", intent.value)
-        logger.debug("[DEBUG] Intent classification result: %s for query='%s'", intent.value, query)
+        logger.debug("Intent classification result: %s for query='%s'", intent.value, query)
 
         should_retrieve = intent != IntentType.UNKNOWN
-        logger.debug("[DEBUG] Retrieval executed: %s (intent=%s)", should_retrieve, intent.value)
+        logger.debug("Retrieval executed: %s (intent=%s)", should_retrieve, intent.value)
 
         # Use detailed search to capture intermediate results
         pipeline = PipelineDetails(
@@ -185,7 +175,7 @@ class QueryRouter:
             results = []
 
         logger.info("Retrieved %d results from hybrid search", len(results))
-        logger.debug("[DEBUG] Retrieval returned %d results", len(results))
+        logger.debug("Retrieval returned %d results", len(results))
 
         reranked = self._reranker.rerank(retrieval_query, results, top_k=top_k) if results else []
         pipeline.reranked_results = reranked
@@ -202,11 +192,8 @@ class QueryRouter:
         logger.info("Generated answer for intent=%s", intent.value)
 
         if reranked:
-            raw_max = max(r.score for r in reranked)
-            confidence = self._sigmoid_normalize(raw_max)
-            logger.info(
-                "Confidence: raw_max=%.4f, sigmoid=%.4f", raw_max, confidence
-            )
+            confidence = max(r.score for r in reranked)
+            logger.info("Confidence: %.4f (sigmoid-normalized by reranker)", confidence)
         else:
             confidence = 0.0
 

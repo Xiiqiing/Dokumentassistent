@@ -16,7 +16,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from src.config import load_settings
 from src.models import ChunkStrategy
-from src.provider import create_embeddings, create_llm
+from src.provider import create_embeddings, create_llm, create_reranker
 from src.ingestion.pipeline import IngestionPipeline
 from src.retrieval.embedder import Embedder
 from src.retrieval.vector_store import VectorStore
@@ -96,7 +96,7 @@ def main() -> None:
             dense_weight=settings.dense_weight,
             bm25_weight=settings.bm25_weight,
         )
-        reranker = Reranker(model_name=settings.reranker_model)
+        reranker = Reranker(model=create_reranker(settings.reranker_model))
         classifier = IntentClassifier(llm=llm)
         generator = llm | StrOutputParser()
         router = QueryRouter(

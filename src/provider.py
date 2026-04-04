@@ -141,3 +141,18 @@ def create_embeddings(settings: Settings) -> Embeddings:
                 f"Unknown embedding provider: '{provider}'. "
                 f"Supported providers: {_SUPPORTED_EMBEDDING_PROVIDERS}"
             )
+
+
+def create_reranker(model_name: str) -> object:
+    """Create a cross-encoder reranker model instance.
+
+    Args:
+        model_name: HuggingFace model name for the cross-encoder.
+
+    Returns:
+        A CrossEncoder model instance.
+    """
+    from sentence_transformers import CrossEncoder
+
+    logger.info("Creating cross-encoder reranker: %s", model_name)
+    return CrossEncoder(model_name)

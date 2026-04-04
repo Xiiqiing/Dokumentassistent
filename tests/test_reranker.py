@@ -1,12 +1,13 @@
 """Tests for the cross-encoder reranker."""
 
-from unittest.mock import MagicMock, patch
+import math
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
 from src.models import DocumentChunk, QueryResult
-from src.retrieval.reranker import Reranker
+from src.retrieval.reranker import Reranker, _sigmoid
 
 
 def _make_result(text: str, score: float) -> QueryResult:
@@ -17,9 +18,9 @@ def _make_result(text: str, score: float) -> QueryResult:
 
 @pytest.fixture
 def reranker() -> Reranker:
-    """Return a Reranker with a mocked CrossEncoder."""
-    with patch("src.retrieval.reranker.CrossEncoder"):
-        return Reranker(model_name="mock-model")
+    """Return a Reranker with a mocked model."""
+    model = MagicMock()
+    return Reranker(model=model)
 
 
 class TestRerank:
@@ -42,6 +43,8 @@ class TestRerank:
         assert reranked[1].chunk.text == "mid relevance"
         assert reranked[2].chunk.text == "low relevance"
         assert all(r.source == "reranked" for r in reranked)
+        # Scores must be sigmoid-normalized to [0, 1]
+        assert all(0.0 <= r.score <= 1.0 for r in reranked)
 
     def test_rerank_respects_top_k(self, reranker: Reranker) -> None:
         """Only top_k results should be returned."""
@@ -62,7 +65,7 @@ class TestRerank:
         reranker._model.predict.assert_not_called()
 
     def test_rerank_single_result(self, reranker: Reranker) -> None:
-        """A single result should be returned with the cross-encoder score."""
+        """A single result should be returned with sigmoid-normalized score."""
         results = [_make_result("only doc", score=0.3)]
         reranker._model.predict = MagicMock(return_value=np.array([0.85]))
 
@@ -70,5 +73,20 @@ class TestRerank:
 
         assert len(reranked) == 1
         assert reranked[0].chunk.text == "only doc"
-        assert reranked[0].score == pytest.approx(0.85)
+        assert reranked[0].score == pytest.approx(_sigmoid(0.85))
+        assert 0.0 <= reranked[0].score <= 1.0
         assert reranked[0].source == "reranked"
+
+    def test_rerank_negative_scores_normalized(self, reranker: Reranker) -> None:
+        """Negative cross-encoder scores must be normalized to [0, 1]."""
+        results = [
+            _make_result("bad", score=0.5),
+            _make_result("worse", score=0.5),
+        ]
+        reranker._model.predict = MagicMock(return_value=np.array([-2.0, -5.0]))
+
+        reranked = reranker.rerank("query", results, top_k=2)
+
+        assert all(0.0 <= r.score <= 1.0 for r in reranked)
+        assert reranked[0].score == pytest.approx(_sigmoid(-2.0))
+        assert reranked[1].score == pytest.approx(_sigmoid(-5.0))

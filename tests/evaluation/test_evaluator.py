@@ -8,21 +8,21 @@ EVAL_MODULE = "src.evaluation.evaluator"
 
 
 def _make_evaluator() -> RAGEvaluator:
-    """Create a RAGEvaluator with mocked dependencies."""
-    with patch(f"{EVAL_MODULE}.OpenAI"), patch(f"{EVAL_MODULE}.llm_factory"):
-        return RAGEvaluator(api_key="test-key", model="gpt-4o-mini")
+    """Create a RAGEvaluator with a mocked LLM."""
+    mock_llm = MagicMock()
+    with patch(f"{EVAL_MODULE}.LangchainLLMWrapper"):
+        return RAGEvaluator(llm=mock_llm)
 
 
 class TestRAGEvaluator:
     """Tests for the RAGEvaluator class."""
 
-    @patch(f"{EVAL_MODULE}.llm_factory")
-    @patch(f"{EVAL_MODULE}.OpenAI")
-    def test_init_stores_llm(self, mock_openai: MagicMock, mock_factory: MagicMock) -> None:
+    @patch(f"{EVAL_MODULE}.LangchainLLMWrapper")
+    def test_init_stores_llm(self, mock_wrapper: MagicMock) -> None:
         """Test that __init__ creates the LLM wrapper."""
-        evaluator = RAGEvaluator(api_key="test-key", model="gpt-4o-mini")
-        mock_openai.assert_called_once_with(api_key="test-key")
-        mock_factory.assert_called_once_with("gpt-4o-mini", client=mock_openai.return_value)
+        mock_llm = MagicMock()
+        evaluator = RAGEvaluator(llm=mock_llm)
+        mock_wrapper.assert_called_once_with(mock_llm)
         assert evaluator._llm is not None
 
     @patch(f"{EVAL_MODULE}.evaluate")

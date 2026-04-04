@@ -18,6 +18,11 @@ def mock_deps() -> dict[str, MagicMock]:
     vector_store = MagicMock()
     bm25_search = MagicMock()
     settings = MagicMock()
+    settings.llm_provider = "ollama"
+    settings.embedding_provider = "local"
+    settings.embedding_model = "paraphrase-multilingual-MiniLM-L12-v2"
+    settings.ollama_model = "llama3"
+    settings.generation_model = "llama3"
 
     set_dependencies(
         query_router=query_router,
@@ -150,4 +155,7 @@ class TestIngestEndpoint:
         assert body["document_id"] == "doc.pdf"
         assert body["chunks_created"] == 2
         mock_deps["vector_store"].add_chunks.assert_called_once()
-        mock_deps["bm25_search"].index.assert_called_once_with(chunks)
+        mock_deps["vector_store"].get_all_chunks.assert_called_once()
+        mock_deps["bm25_search"].index.assert_called_once_with(
+            mock_deps["vector_store"].get_all_chunks.return_value
+        )

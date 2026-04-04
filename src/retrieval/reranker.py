@@ -1,25 +1,30 @@
-"""Cross-encoder reranking using sentence-transformers."""
+"""Cross-encoder reranking."""
 
 import logging
-
-from sentence_transformers import CrossEncoder
+import math
 
 from src.models import QueryResult
 
 logger = logging.getLogger(__name__)
 
 
+def _sigmoid(score: float) -> float:
+    """Normalize a raw cross-encoder score to 0-1 via sigmoid."""
+    score = max(-500.0, min(500.0, score))
+    return 1.0 / (1.0 + math.exp(-score))
+
+
 class Reranker:
     """Reranks retrieval results using a cross-encoder model."""
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model: object) -> None:
         """Initialize the reranker with a cross-encoder model.
 
         Args:
-            model_name: HuggingFace model name for the cross-encoder.
+            model: A cross-encoder model instance (e.g. from provider.create_reranker).
         """
-        self._model = CrossEncoder(model_name)
-        logger.info("Loaded cross-encoder model '%s'", model_name)
+        self._model = model
+        logger.info("Loaded cross-encoder reranker")
 
     def rerank(self, query: str, results: list[QueryResult], top_k: int) -> list[QueryResult]:
         """Rerank retrieval results using the cross-encoder.
@@ -39,7 +44,7 @@ class Reranker:
         scores = self._model.predict(pairs)
 
         reranked = [
-            QueryResult(chunk=result.chunk, score=float(score), source="reranked")
+            QueryResult(chunk=result.chunk, score=_sigmoid(float(score)), source="reranked")
             for result, score in zip(results, scores)
         ]
         reranked.sort(key=lambda r: r.score, reverse=True)

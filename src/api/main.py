@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from langchain_core.output_parsers import StrOutputParser
 
 from src.config import load_settings
-from src.provider import create_llm, create_embeddings
+from src.provider import create_llm, create_embeddings, create_reranker
 from src.retrieval.embedder import Embedder
 from src.retrieval.vector_store import VectorStore
 from src.retrieval.bm25_search import BM25Search
@@ -68,7 +68,7 @@ def create_app() -> FastAPI:
         dense_weight=settings.dense_weight,
         bm25_weight=settings.bm25_weight,
     )
-    reranker = Reranker(model_name=settings.reranker_model)
+    reranker = Reranker(model=create_reranker(settings.reranker_model))
     intent_classifier = IntentClassifier(llm=llm)
     generator = llm | StrOutputParser()
     query_router = QueryRouter(
