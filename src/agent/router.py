@@ -2,15 +2,49 @@
 
 import logging
 import unicodedata
+from typing import TypedDict
 
 from langchain_core.runnables import Runnable
+from langgraph.graph import END, StateGraph
 
-from src.models import IntentType, GenerationResponse, PipelineDetails
+from src.models import IntentType, GenerationResponse, PipelineDetails, QueryResult
 from src.agent.intent_classifier import IntentClassifier
 from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
 
 logger = logging.getLogger(__name__)
+
+
+class RouterState(TypedDict):
+    """LangGraph state passed between routing nodes.
+
+    Attributes:
+        query: The user's original query.
+        top_k: Number of results to retrieve.
+        user_language: Detected language of the query.
+        intent: Classified intent type.
+        retrieval_query: Query used for retrieval (may be translated).
+        translated: Whether the query was translated.
+        dense_results: Results from vector retrieval.
+        sparse_results: Results from BM25 retrieval.
+        fused_results: Results after RRF fusion.
+        reranked: Results after cross-encoder reranking.
+        confidence: Max reranker score (0.0-1.0).
+        answer: Final generated answer.
+    """
+
+    query: str
+    top_k: int
+    user_language: str
+    intent: IntentType
+    retrieval_query: str
+    translated: bool
+    dense_results: list[QueryResult]
+    sparse_results: list[QueryResult]
+    fused_results: list[QueryResult]
+    reranked: list[QueryResult]
+    confidence: float
+    answer: str
 
 
 class QueryRouter:
@@ -41,6 +75,7 @@ class QueryRouter:
         self._reranker = reranker
         self._generator = generator
         self._translate_query_enabled = translate_query
+        self._graph = self._build_graph()
 
     @staticmethod
     def _detect_script(text: str) -> str | None:
@@ -168,8 +203,100 @@ class QueryRouter:
         logger.info("Translated query to Danish: %s", translated)
         return translated
 
+    def _build_graph(self) -> object:
+        """Build the LangGraph routing graph.
+
+        Nodes:
+            detect    → detect language and intent
+            translate → translate query to Danish if needed
+            retrieve  → hybrid search (skipped when intent is UNKNOWN)
+            rerank    → cross-encoder reranking
+            update_intent → promote FACTUAL to RAG when sources are found
+            generate  → build prompt and call LLM
+
+        Returns:
+            Compiled LangGraph graph.
+        """
+
+        def detect_node(state: RouterState) -> dict:
+            user_language, intent = self._detect_language_and_intent(state["query"])
+            return {"user_language": user_language, "intent": intent}
+
+        def translate_node(state: RouterState) -> dict:
+            retrieval_query = self._translate_query(state["query"], state["user_language"])
+            return {
+                "retrieval_query": retrieval_query,
+                "translated": retrieval_query != state["query"],
+            }
+
+        def retrieve_node(state: RouterState) -> dict:
+            hybrid_result = self._hybrid_retriever.search_detailed(
+                state["retrieval_query"], top_k=state["top_k"]
+            )
+            logger.info("Retrieved %d results from hybrid search", len(hybrid_result.fused_results))
+            return {
+                "dense_results": hybrid_result.dense_results,
+                "sparse_results": hybrid_result.sparse_results,
+                "fused_results": hybrid_result.fused_results,
+            }
+
+        def rerank_node(state: RouterState) -> dict:
+            results = state.get("fused_results", [])
+            reranked = (
+                self._reranker.rerank(state["retrieval_query"], results, top_k=state["top_k"])
+                if results
+                else []
+            )
+            confidence = max(r.score for r in reranked) if reranked else 0.0
+            logger.info("Reranked to %d results", len(reranked))
+            if reranked:
+                logger.info("Confidence: %.4f (sigmoid-normalized by reranker)", confidence)
+            return {"reranked": reranked, "confidence": confidence}
+
+        def update_intent_node(state: RouterState) -> dict:
+            if state.get("reranked") and state["intent"] == IntentType.FACTUAL:
+                logger.info("Overriding intent to RAG (sources retrieved)")
+                return {"intent": IntentType.RAG}
+            return {}
+
+        def generate_node(state: RouterState) -> dict:
+            reranked = state.get("reranked", [])
+            context = "\n\n".join(r.chunk.text for r in reranked)
+            prompt = self._build_prompt(
+                state["query"], state["intent"], context, state["user_language"]
+            )
+            answer = self._generator.invoke(prompt)
+            logger.info("Generated answer for intent=%s", state["intent"].value)
+            return {"answer": str(answer)}
+
+        def should_retrieve(state: RouterState) -> str:
+            """Skip retrieval when intent is UNKNOWN."""
+            return "retrieve" if state["intent"] != IntentType.UNKNOWN else "rerank"
+
+        graph: StateGraph = StateGraph(RouterState)
+        graph.add_node("detect", detect_node)
+        graph.add_node("translate", translate_node)
+        graph.add_node("retrieve", retrieve_node)
+        graph.add_node("rerank", rerank_node)
+        graph.add_node("update_intent", update_intent_node)
+        graph.add_node("generate", generate_node)
+
+        graph.set_entry_point("detect")
+        graph.add_edge("detect", "translate")
+        graph.add_conditional_edges(
+            "translate",
+            should_retrieve,
+            {"retrieve": "retrieve", "rerank": "rerank"},
+        )
+        graph.add_edge("retrieve", "rerank")
+        graph.add_edge("rerank", "update_intent")
+        graph.add_edge("update_intent", "generate")
+        graph.add_edge("generate", END)
+
+        return graph.compile()
+
     def route(self, query: str, top_k: int) -> GenerationResponse:
-        """Route a query through the full RAG pipeline.
+        """Route a query through the full RAG pipeline via LangGraph.
 
         Args:
             query: The user's natural language query.
@@ -180,64 +307,100 @@ class QueryRouter:
         """
         logger.info("Routing query: %s", query)
 
-        # Single LLM call for both language detection and intent classification
-        user_language, intent = self._detect_language_and_intent(query)
-        retrieval_query = self._translate_query(query, user_language)
-        translated = retrieval_query != query
+        initial_state: RouterState = {
+            "query": query,
+            "top_k": top_k,
+            "user_language": "Danish",
+            "intent": IntentType.UNKNOWN,
+            "retrieval_query": query,
+            "translated": False,
+            "dense_results": [],
+            "sparse_results": [],
+            "fused_results": [],
+            "reranked": [],
+            "confidence": 0.0,
+            "answer": "",
+        }
 
-        logger.info("Classified intent: %s", intent.value)
-        logger.debug("Intent classification result: %s for query='%s'", intent.value, query)
+        final_state: RouterState = self._graph.invoke(initial_state)
 
-        should_retrieve = intent != IntentType.UNKNOWN
-        logger.debug("Retrieval executed: %s (intent=%s)", should_retrieve, intent.value)
-
-        # Use detailed search to capture intermediate results
         pipeline = PipelineDetails(
             original_query=query,
-            retrieval_query=retrieval_query,
-            detected_language=user_language,
-            translated=translated,
+            retrieval_query=final_state["retrieval_query"],
+            detected_language=final_state["user_language"],
+            translated=final_state["translated"],
+            dense_results=final_state.get("dense_results", []),
+            sparse_results=final_state.get("sparse_results", []),
+            fused_results=final_state.get("fused_results", []),
+            reranked_results=final_state.get("reranked", []),
         )
-
-        if should_retrieve:
-            hybrid_result = self._hybrid_retriever.search_detailed(retrieval_query, top_k=top_k)
-            pipeline.dense_results = hybrid_result.dense_results
-            pipeline.sparse_results = hybrid_result.sparse_results
-            pipeline.fused_results = hybrid_result.fused_results
-            results = hybrid_result.fused_results
-        else:
-            results = []
-
-        logger.info("Retrieved %d results from hybrid search", len(results))
-        logger.debug("Retrieval returned %d results", len(results))
-
-        reranked = self._reranker.rerank(retrieval_query, results, top_k=top_k) if results else []
-        pipeline.reranked_results = reranked
-        logger.info("Reranked to %d results", len(reranked))
-
-        if reranked and intent == IntentType.FACTUAL:
-            intent = IntentType.RAG
-            logger.info("Overriding intent to RAG (sources retrieved)")
-
-        context = "\n\n".join(r.chunk.text for r in reranked)
-        prompt = self._build_prompt(query, intent, context, user_language)
-
-        answer = self._generator.invoke(prompt)
-        logger.info("Generated answer for intent=%s", intent.value)
-
-        if reranked:
-            confidence = max(r.score for r in reranked)
-            logger.info("Confidence: %.4f (sigmoid-normalized by reranker)", confidence)
-        else:
-            confidence = 0.0
 
         return GenerationResponse(
-            answer=str(answer),
-            sources=reranked,
-            intent=intent,
-            confidence=confidence,
+            answer=final_state["answer"],
+            sources=final_state.get("reranked", []),
+            intent=final_state["intent"],
+            confidence=final_state["confidence"],
             pipeline_details=pipeline,
         )
+
+        # --- Old if/else routing (replaced by LangGraph above) ---
+        #
+        # user_language, intent = self._detect_language_and_intent(query)
+        # retrieval_query = self._translate_query(query, user_language)
+        # translated = retrieval_query != query
+        #
+        # logger.info("Classified intent: %s", intent.value)
+        # logger.debug("Intent classification result: %s for query='%s'", intent.value, query)
+        #
+        # should_retrieve = intent != IntentType.UNKNOWN
+        # logger.debug("Retrieval executed: %s (intent=%s)", should_retrieve, intent.value)
+        #
+        # pipeline = PipelineDetails(
+        #     original_query=query,
+        #     retrieval_query=retrieval_query,
+        #     detected_language=user_language,
+        #     translated=translated,
+        # )
+        #
+        # if should_retrieve:
+        #     hybrid_result = self._hybrid_retriever.search_detailed(retrieval_query, top_k=top_k)
+        #     pipeline.dense_results = hybrid_result.dense_results
+        #     pipeline.sparse_results = hybrid_result.sparse_results
+        #     pipeline.fused_results = hybrid_result.fused_results
+        #     results = hybrid_result.fused_results
+        # else:
+        #     results = []
+        #
+        # logger.info("Retrieved %d results from hybrid search", len(results))
+        # logger.debug("Retrieval returned %d results", len(results))
+        #
+        # reranked = self._reranker.rerank(retrieval_query, results, top_k=top_k) if results else []
+        # pipeline.reranked_results = reranked
+        # logger.info("Reranked to %d results", len(reranked))
+        #
+        # if reranked and intent == IntentType.FACTUAL:
+        #     intent = IntentType.RAG
+        #     logger.info("Overriding intent to RAG (sources retrieved)")
+        #
+        # context = "\n\n".join(r.chunk.text for r in reranked)
+        # prompt = self._build_prompt(query, intent, context, user_language)
+        #
+        # answer = self._generator.invoke(prompt)
+        # logger.info("Generated answer for intent=%s", intent.value)
+        #
+        # if reranked:
+        #     confidence = max(r.score for r in reranked)
+        #     logger.info("Confidence: %.4f (sigmoid-normalized by reranker)", confidence)
+        # else:
+        #     confidence = 0.0
+        #
+        # return GenerationResponse(
+        #     answer=str(answer),
+        #     sources=reranked,
+        #     intent=intent,
+        #     confidence=confidence,
+        #     pipeline_details=pipeline,
+        # )
 
     def _build_prompt(
         self, query: str, intent: IntentType, context: str, user_language: str

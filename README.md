@@ -20,14 +20,14 @@ The system follows a three-stage RAG pipeline:
 
 **Retrieval:** User queries run through both dense (Qdrant cosine similarity) and sparse (BM25) search paths. Results are merged via reciprocal rank fusion, then a cross-encoder reranker scores each candidate for final ordering. An intent classifier routes queries to the appropriate retrieval strategy.
 
-**Generation:** Top-ranked chunks are assembled into a prompt context and passed to the LLM through LangChain. The response is returned via a FastAPI endpoint and displayed in a Streamlit UI. Retrieval quality can be measured offline using RAGAS metrics.
+**Generation:** Top-ranked chunks are assembled into a prompt context and passed to the LLM. The routing pipeline is orchestrated as a stateful LangGraph graph — each step (language detection, translation, retrieval, reranking, generation) runs as a node with full intermediate state preserved. The response is returned via a FastAPI endpoint and displayed in a Streamlit UI. Retrieval quality can be measured offline using RAGAS metrics.
 
 ## Tech Stack
 
 | Category | Technology |
 |---|---|
 | Framework | FastAPI, uvicorn |
-| Orchestration | LangChain |
+| Orchestration | LangChain, LangGraph |
 | Vector Store | Qdrant (local mode, no server required) |
 | Embedding | HuggingFace `paraphrase-multilingual-MiniLM-L12-v2` (384 dim) |
 | LLM | `gemma3:4b` (default, runs locally via Ollama) |
