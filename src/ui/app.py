@@ -9,6 +9,7 @@ import os
 import random
 
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 
 API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000")
@@ -192,6 +193,15 @@ st.set_page_config(
     page_title="Dokumentassistent",
     page_icon="📄",
     layout="centered",
+)
+
+# ---------------------------------------------------------------------------
+# Analytics — Umami Cloud
+# ---------------------------------------------------------------------------
+components.html(
+    '<script async src="https://cloud.umami.is/script.js"'
+    ' data-website-id="3f48820e-f670-4916-a230-5d0821f0f546"></script>',
+    height=0,
 )
 
 # ---------------------------------------------------------------------------
