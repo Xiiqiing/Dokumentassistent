@@ -1,10 +1,15 @@
 """API route definitions for the document assistant."""
 
+import asyncio
+import json
 import logging
 import os
+import queue
+import threading
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -217,6 +222,50 @@ async def query_documents(request: QueryRequest) -> QueryResponse:
         confidence=response.confidence,
         pipeline_details=pipeline_details,
     )
+
+
+@router.post("/query/stream")
+async def query_stream(request: QueryRequest) -> StreamingResponse:
+    """Stream pipeline progress events using Server-Sent Events (SSE).
+
+    Each event is a JSON object with a ``step`` field naming the completed
+    pipeline node, plus node-specific fields.  The final event has
+    ``step='done'`` and carries the full query result under ``result``.
+
+    Args:
+        request: Query parameters including question and retrieval settings.
+
+    Returns:
+        StreamingResponse with ``text/event-stream`` content type.
+    """
+    event_queue: queue.Queue = queue.Queue()
+
+    def _run() -> None:
+        try:
+            for event in _query_router.route_stream(
+                query=request.question, top_k=request.top_k
+            ):
+                event_queue.put(event)
+        except Exception as exc:
+            exc_str = str(exc)
+            if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str or "rate" in exc_str.lower():
+                event_queue.put({"step": "error", "code": 429, "message": exc_str})
+            else:
+                event_queue.put({"step": "error", "code": 500, "message": exc_str})
+        finally:
+            event_queue.put(None)  # sentinel
+
+    threading.Thread(target=_run, daemon=True).start()
+
+    async def _generate():
+        loop = asyncio.get_event_loop()
+        while True:
+            event = await loop.run_in_executor(None, event_queue.get)
+            if event is None:
+                break
+            yield f"data: {json.dumps(event)}\n\n"
+
+    return StreamingResponse(_generate(), media_type="text/event-stream")
 
 
 @router.post("/ingest", response_model=IngestResponse)

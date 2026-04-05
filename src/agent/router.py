@@ -2,6 +2,7 @@
 
 import logging
 import unicodedata
+from collections.abc import Generator
 from typing import TypedDict
 
 from langchain_core.runnables import Runnable
@@ -401,6 +402,112 @@ class QueryRouter:
         #     confidence=confidence,
         #     pipeline_details=pipeline,
         # )
+
+    def route_stream(self, query: str, top_k: int) -> Generator[dict, None, None]:
+        """Stream pipeline events as each LangGraph node completes.
+
+        Each yielded dict contains a ``step`` key (the node name) plus
+        node-specific fields.  A final synthetic event with ``step='done'``
+        carries the fully serialised response under ``result``.
+
+        Args:
+            query: User query.
+            top_k: Number of results to retrieve.
+
+        Yields:
+            Step event dicts, then a final ``done`` event with the result.
+        """
+        initial_state: RouterState = {
+            "query": query,
+            "top_k": top_k,
+            "user_language": "Danish",
+            "intent": IntentType.UNKNOWN,
+            "retrieval_query": query,
+            "translated": False,
+            "dense_results": [],
+            "sparse_results": [],
+            "fused_results": [],
+            "reranked": [],
+            "confidence": 0.0,
+            "answer": "",
+        }
+
+        accumulated: dict = dict(initial_state)
+
+        for chunk in self._graph.stream(initial_state, stream_mode="updates"):
+            for node_name, update in chunk.items():
+                accumulated.update(update)
+
+                event: dict = {"step": node_name}
+                if node_name == "detect":
+                    event["intent"] = update.get("intent", IntentType.UNKNOWN).value
+                    event["language"] = update.get("user_language", "")
+                elif node_name == "translate":
+                    event["translated"] = update.get("translated", False)
+                    event["retrieval_query"] = update.get("retrieval_query", query)
+                elif node_name == "retrieve":
+                    event["dense_count"] = len(update.get("dense_results", []))
+                    event["sparse_count"] = len(update.get("sparse_results", []))
+                elif node_name == "rerank":
+                    event["reranked_count"] = len(update.get("reranked", []))
+                    event["confidence"] = round(update.get("confidence", 0.0), 4)
+                # update_intent and generate: no extra fields needed
+
+                yield event
+
+        # Build the final response from accumulated state and emit as "done"
+        reranked: list = accumulated.get("reranked", [])
+
+        def _ser(results: list) -> list[dict]:
+            return [
+                {
+                    "document_id": r.chunk.document_id,
+                    "chunk_id": r.chunk.chunk_id,
+                    "score": r.score,
+                    "source": r.source,
+                }
+                for r in results
+            ]
+
+        pd_acc = PipelineDetails(
+            original_query=query,
+            retrieval_query=accumulated.get("retrieval_query", query),
+            detected_language=accumulated.get("user_language", "Danish"),
+            translated=accumulated.get("translated", False),
+            dense_results=accumulated.get("dense_results", []),
+            sparse_results=accumulated.get("sparse_results", []),
+            fused_results=accumulated.get("fused_results", []),
+            reranked_results=reranked,
+        )
+
+        yield {
+            "step": "done",
+            "result": {
+                "answer": accumulated.get("answer", ""),
+                "sources": [
+                    {
+                        "chunk_id": r.chunk.chunk_id,
+                        "document_id": r.chunk.document_id,
+                        "text": r.chunk.text,
+                        "score": r.score,
+                        "source": r.source,
+                    }
+                    for r in reranked
+                ],
+                "intent": accumulated.get("intent", IntentType.UNKNOWN).value,
+                "confidence": accumulated.get("confidence", 0.0),
+                "pipeline_details": {
+                    "original_query": pd_acc.original_query,
+                    "retrieval_query": pd_acc.retrieval_query,
+                    "detected_language": pd_acc.detected_language,
+                    "translated": pd_acc.translated,
+                    "dense_results": _ser(pd_acc.dense_results),
+                    "sparse_results": _ser(pd_acc.sparse_results),
+                    "fused_results": _ser(pd_acc.fused_results),
+                    "reranked_results": _ser(pd_acc.reranked_results),
+                },
+            },
+        }
 
     def _build_prompt(
         self, query: str, intent: IntentType, context: str, user_language: str

@@ -4,10 +4,9 @@ Calls the FastAPI backend at http://localhost:8000.
 Single-page document search interface with clean sans-serif design.
 """
 
+import json
 import os
 import random
-import threading
-import time
 
 import streamlit as st
 import requests
@@ -31,28 +30,6 @@ EXAMPLE_QUESTIONS: list[str] = [
     "Hvornår kan en leder afvise en klage som åbenbart grundløs?",
     "Hvad er reglerne for forlænget tid til eksamen?",
 ]
-
-# ---------------------------------------------------------------------------
-# Pipeline step labels shown during query processing
-# Each tuple: (label, min_seconds_to_show_before_advancing)
-# The last step has None duration — it stays until the request completes.
-# ---------------------------------------------------------------------------
-PIPELINE_STEPS: dict[str, list[tuple[str, float | None]]] = {
-    "da": [
-        ("Klassificerer forespørgsel ...", 0.7),
-        ("Oversætter til dansk om nødvendigt ...", 1.0),
-        ("Søger med BM25 og vektorsøgning ...", 1.8),
-        ("Fusionerer og reranker resultater ...", 1.2),
-        ("Genererer svar med sprogmodel ...", None),
-    ],
-    "en": [
-        ("Classifying query intent ...", 0.7),
-        ("Translating to Danish if needed ...", 1.0),
-        ("Searching with BM25 and vector search ...", 1.8),
-        ("Fusing and reranking results ...", 1.2),
-        ("Generating answer with language model ...", None),
-    ],
-}
 
 # ---------------------------------------------------------------------------
 # Internationalisation — all UI strings live here
@@ -469,59 +446,108 @@ with st.form(key="search_form", clear_on_submit=False):
 # Query logic
 # ---------------------------------------------------------------------------
 if search_clicked and question.strip():
-    _result: dict = {}
-
-    def _call_api() -> None:
-        """Run the blocking API request in a background thread."""
-        try:
-            resp = requests.post(
-                f"{API_BASE}/query",
-                json={
-                    "question": question.strip(),
-                    "top_k": top_k,
-                    "strategy": strategy,
-                },
-                timeout=120,
-            )
-            resp.raise_for_status()
-            _result["data"] = resp.json()
-        except Exception as _exc:  # noqa: BLE001
-            _result["error"] = _exc
-
-    _thread = threading.Thread(target=_call_api, daemon=True)
-    _thread.start()
+    data: dict = {}
+    _sse_error: dict | None = None
 
     with st.status(t["status_label"], expanded=True) as _status:
-        for _step_label, _step_duration in PIPELINE_STEPS[lang]:
-            st.write(_step_label)
-            if _step_duration is not None:
-                _deadline = time.monotonic() + _step_duration
-                while time.monotonic() < _deadline and _thread.is_alive():
-                    time.sleep(0.1)
-            else:
-                _thread.join()
+        try:
+            with requests.post(
+                f"{API_BASE}/query/stream",
+                json={"question": question.strip(), "top_k": top_k, "strategy": strategy},
+                stream=True,
+                timeout=180,
+            ) as _resp:
+                _resp.raise_for_status()
 
-        if "error" in _result:
+                for _raw in _resp.iter_lines():
+                    if not _raw:
+                        continue
+                    _line = _raw.decode("utf-8") if isinstance(_raw, bytes) else _raw
+                    if not _line.startswith("data: "):
+                        continue
+
+                    _event = json.loads(_line[6:])
+                    _step = _event.get("step", "")
+
+                    if _step == "detect":
+                        _intent_val = _event.get("intent", "")
+                        _lang_val = _event.get("language", "")
+                        if lang == "da":
+                            st.write(f"Intent: **{_intent_val}** · Sprog: **{_lang_val}**")
+                        else:
+                            st.write(f"Intent: **{_intent_val}** · Language: **{_lang_val}**")
+
+                    elif _step == "translate":
+                        if _event.get("translated"):
+                            _rq = _event.get("retrieval_query", "")
+                            st.write(
+                                (f"Oversat til dansk: _{_rq}_")
+                                if lang == "da"
+                                else (f"Translated to Danish: _{_rq}_")
+                            )
+                        else:
+                            st.write(
+                                "Forespørgsel allerede på dansk"
+                                if lang == "da"
+                                else "Query already in Danish"
+                            )
+
+                    elif _step == "retrieve":
+                        _dc = _event.get("dense_count", 0)
+                        _sc = _event.get("sparse_count", 0)
+                        st.write(
+                            (f"Fandt **{_dc}** semantiske + **{_sc}** leksikalske kandidater")
+                            if lang == "da"
+                            else (f"Found **{_dc}** semantic + **{_sc}** lexical candidates")
+                        )
+
+                    elif _step == "rerank":
+                        _rc = _event.get("reranked_count", 0)
+                        _cf = _event.get("confidence", 0.0)
+                        st.write(
+                            (f"Reranket til **{_rc}** resultater · konfidensgrad **{_cf:.0%}**")
+                            if lang == "da"
+                            else (f"Reranked to **{_rc}** results · confidence **{_cf:.0%}**")
+                        )
+
+                    elif _step == "generate":
+                        st.write(
+                            "Svar genereret"
+                            if lang == "da"
+                            else "Answer generated"
+                        )
+
+                    elif _step == "done":
+                        data = _event.get("result", {})
+                        _status.update(label=t["status_done"], state="complete", expanded=False)
+
+                    elif _step == "error":
+                        _sse_error = _event
+                        _status.update(label=t["status_error"], state="error", expanded=True)
+                        break
+
+        except requests.ConnectionError:
             _status.update(label=t["status_error"], state="error", expanded=True)
-        else:
-            _status.update(label=t["status_done"], state="complete", expanded=False)
-
-    if "error" in _result:
-        _exc = _result["error"]
-        if isinstance(_exc, requests.ConnectionError):
             st.error(t["err_connection"])
-        elif isinstance(_exc, requests.HTTPError):
+            st.stop()
+        except requests.HTTPError as _exc:
+            _status.update(label=t["status_error"], state="error", expanded=True)
             if _exc.response.status_code == 429:
                 st.warning(t["err_rate_limit"])
             else:
                 st.error(f'{t["err_api"]}: {_exc.response.status_code} -- {_exc.response.text}')
-        elif isinstance(_exc, requests.Timeout):
+            st.stop()
+        except requests.Timeout:
+            _status.update(label=t["status_error"], state="error", expanded=True)
             st.error(t["err_timeout"])
-        else:
-            st.error(str(_exc))
-        st.stop()
+            st.stop()
 
-    data = _result.get("data", {})
+    if _sse_error is not None:
+        if _sse_error.get("code") == 429:
+            st.warning(t["err_rate_limit"])
+        else:
+            st.error(f'{t["err_api"]}: {_sse_error.get("message", "")}')
+        st.stop()
 
     # -- Metadata bar --
     confidence = data.get("confidence", 0.0)
