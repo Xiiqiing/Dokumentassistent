@@ -9,7 +9,7 @@ from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from pydantic import ConfigDict
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PointStruct, VectorParams
 
 from src.models import ChunkStrategy, DocumentChunk, QueryResult
 
@@ -142,6 +142,55 @@ class VectorStore:
                 )
             )
         logger.info("Loaded %d chunks from collection '%s'", len(chunks), self._collection_name)
+        return chunks
+
+    def list_document_ids(self) -> list[str]:
+        """Return a sorted list of unique document IDs in the collection.
+
+        Returns:
+            Sorted list of document ID strings.
+        """
+        all_chunks = self.get_all_chunks()
+        ids = sorted({chunk.document_id for chunk in all_chunks})
+        logger.debug("Found %d unique document IDs", len(ids))
+        return ids
+
+    def get_chunks_by_document_id(self, document_id: str) -> list[DocumentChunk]:
+        """Retrieve all chunks belonging to a specific document.
+
+        Uses a Qdrant payload filter to avoid loading the full collection.
+
+        Args:
+            document_id: The document identifier to filter by.
+
+        Returns:
+            List of DocumentChunk objects for that document, in storage order.
+        """
+        records, _offset = self._client.scroll(
+            collection_name=self._collection_name,
+            scroll_filter=Filter(
+                must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))]
+            ),
+            limit=10_000,
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        chunks: list[DocumentChunk] = []
+        for record in records:
+            payload = record.payload
+            chunks.append(
+                DocumentChunk(
+                    chunk_id=payload["chunk_id"],
+                    document_id=payload["document_id"],
+                    text=payload["text"],
+                    metadata=json.loads(payload["metadata"]),
+                    strategy=ChunkStrategy(payload["strategy"]),
+                )
+            )
+        logger.debug(
+            "Fetched %d chunks for document '%s'", len(chunks), document_id
+        )
         return chunks
 
     def as_retriever(self, embedder: Any, top_k: int) -> BaseRetriever:

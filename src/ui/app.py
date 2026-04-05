@@ -54,8 +54,10 @@ TEXTS: dict[str, dict[str, str]] = {
             "- **LLM-integration** — provider-agnostisk, prompt-styret "
             "svargenerering\n"
             "- **Evaluering** — RAGAS-baseret kvalitetsmaaling\n"
-            "- **Agent-routing** — intent-klassifikation og "
-            "forespørgselsdirigering"
+            "- **Agent Flows** — valgfri ReAct-loop med vaerktoejskald: "
+            "LLM bestemmer selv hvor mange soegninger der behoeves og "
+            "stoetter flertrinssraesonnering paa tvaers af dokumenter "
+            "(`AGENT_MODE=react`)"
         ),
         "chunking_label": "Chunking-strategi",
         "chunking_help": "Vaelg hvordan dokumenterne opdeles i tekststykker.",
@@ -99,7 +101,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "pipeline_original": "Original foresporgsel",
         "pipeline_translated": "Oversat til dansk",
         "pipeline_lang": "Sprog registreret",
-        "pipeline_no_translation": "Ingen oversaettelse (foresporgsel allerede paa dansk)",
+        "pipeline_no_translation": "Ingen oversaettelse nødvendig",
         "pipeline_bm25": "BM25-resultater (leksikalsk soegning)",
         "pipeline_dense": "Vektorsoegning (semantisk)",
         "pipeline_fused": "RRF-fusioneret raekkefoelge",
@@ -129,8 +131,10 @@ TEXTS: dict[str, dict[str, str]] = {
             "- **LLM integration** — provider-agnostic, prompt-driven "
             "answer generation\n"
             "- **Evaluation** — RAGAS-based quality measurement\n"
-            "- **Agent routing** — intent classification and query "
-            "dispatch"
+            "- **Agent Flows** — optional ReAct loop with tool calling: "
+            "the LLM decides how many searches are needed and supports "
+            "multi-step reasoning across documents "
+            "(`AGENT_MODE=react`)"
         ),
         "chunking_label": "Chunking strategy",
         "chunking_help": "Choose how documents are split into text chunks.",
@@ -174,7 +178,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "pipeline_original": "Original query",
         "pipeline_translated": "Translated to Danish",
         "pipeline_lang": "Detected language",
-        "pipeline_no_translation": "No translation (query already in Danish)",
+        "pipeline_no_translation": "No need for translation",
         "pipeline_bm25": "BM25 Results (lexical search)",
         "pipeline_dense": "Vector Search (semantic)",
         "pipeline_fused": "RRF Fused Ranking",
@@ -487,9 +491,9 @@ if search_clicked and question.strip():
                             )
                         else:
                             st.write(
-                                "Forespørgsel allerede på dansk"
+                                "Ingen oversættelse nødvendig for forespørgslen"
                                 if lang == "da"
-                                else "Query already in Danish"
+                                else "No translation needed for the query"
                             )
 
                     elif _step == "retrieve":
@@ -508,6 +512,23 @@ if search_clicked and question.strip():
                             (f"Reranket til **{_rc}** resultater · konfidensgrad **{_cf:.0%}**")
                             if lang == "da"
                             else (f"Reranked to **{_rc}** results · confidence **{_cf:.0%}**")
+                        )
+
+                    elif _step == "tool_call":
+                        _tool_name = _event.get("tool", "")
+                        _tool_query = _event.get("query", "")
+                        st.write(
+                            (f"Vaerktoej **{_tool_name}** kaldt: _{_tool_query}_")
+                            if lang == "da"
+                            else (f"Tool **{_tool_name}** called: _{_tool_query}_")
+                        )
+
+                    elif _step == "tool_result":
+                        _rc = _event.get("result_count", 0)
+                        st.write(
+                            (f"Hentet **{_rc}** dokumenter")
+                            if lang == "da"
+                            else (f"Retrieved **{_rc}** documents")
                         )
 
                     elif _step == "generate":

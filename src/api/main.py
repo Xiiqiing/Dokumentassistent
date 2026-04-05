@@ -16,6 +16,7 @@ from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
 from src.agent.intent_classifier import IntentClassifier
 from src.agent.router import QueryRouter
+from src.agent.react_router import ReActRouter
 from src.ingestion.pipeline import IngestionPipeline
 from src.api.routes import router, set_dependencies
 
@@ -69,15 +70,27 @@ def create_app() -> FastAPI:
         bm25_weight=settings.bm25_weight,
     )
     reranker = Reranker(model=create_reranker(settings.reranker_model))
-    intent_classifier = IntentClassifier(llm=llm, model_name=settings.generation_model)
-    generator = llm | StrOutputParser()
-    query_router = QueryRouter(
-        intent_classifier=intent_classifier,
-        hybrid_retriever=hybrid_retriever,
-        reranker=reranker,
-        generator=generator,
-        translate_query=settings.translate_query,
-    )
+
+    if settings.agent_mode == "react":
+        logger.info("Agent mode: ReAct (tool-calling loop)")
+        query_router: QueryRouter | ReActRouter = ReActRouter(
+            llm=llm,
+            hybrid_retriever=hybrid_retriever,
+            reranker=reranker,
+            vector_store=vector_store,
+            default_top_k=settings.top_k,
+        )
+    else:
+        logger.info("Agent mode: pipeline (fixed DAG)")
+        intent_classifier = IntentClassifier(llm=llm, model_name=settings.generation_model)
+        generator = llm | StrOutputParser()
+        query_router = QueryRouter(
+            intent_classifier=intent_classifier,
+            hybrid_retriever=hybrid_retriever,
+            reranker=reranker,
+            generator=generator,
+            translate_query=settings.translate_query,
+        )
 
     set_dependencies(
         query_router=query_router,

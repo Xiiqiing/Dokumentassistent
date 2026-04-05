@@ -64,6 +64,9 @@ class Settings:
     # Query translation
     translate_query: bool
 
+    # Agent mode: "pipeline" (fixed DAG) or "react" (tool-calling ReAct loop)
+    agent_mode: str
+
 
 def _parse_bool(value: str, *, default: bool) -> bool:
     """Parse a boolean environment variable string.
@@ -141,4 +144,8 @@ def load_settings() -> Settings:
             os.environ.get("TRANSLATE_QUERY", ""),
             default=os.environ.get("LLM_PROVIDER", "ollama") == "ollama",
         ),
+
+        # Agent mode: "pipeline" keeps the existing fixed DAG; "react" enables
+        # the multi-step ReAct loop (requires an LLM with tool-calling support).
+        agent_mode=os.environ.get("AGENT_MODE", "pipeline"),
     )

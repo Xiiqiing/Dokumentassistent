@@ -14,13 +14,27 @@ A RAG-based document assistant for Danish-language PDFs, featuring hybrid search
 
 ## Architecture
 
-The system follows a three-stage RAG pipeline:
+The system follows a three-stage RAG pipeline with an optional Agent Flows mode:
 
 **Ingestion:** PDF documents are parsed with PyMuPDF, cleaned, and split into chunks using one of three strategies (fixed-size, recursive, or semantic). Each chunk is embedded via a multilingual sentence-transformer and stored in a Qdrant vector collection. A parallel BM25 index is built from the same chunks for sparse keyword matching.
 
-**Retrieval:** User queries run through both dense (Qdrant cosine similarity) and sparse (BM25) search paths. Results are merged via reciprocal rank fusion, then a cross-encoder reranker scores each candidate for final ordering. An intent classifier routes queries to the appropriate retrieval strategy.
+**Retrieval:** User queries run through both dense (Qdrant cosine similarity) and sparse (BM25) search paths. Results are merged via reciprocal rank fusion, then a cross-encoder reranker scores each candidate for final ordering.
 
-**Generation:** Top-ranked chunks are assembled into a prompt context and passed to the LLM. The routing pipeline is orchestrated as a stateful LangGraph graph — each step (language detection, translation, retrieval, reranking, generation) runs as a node with full intermediate state preserved. The response is returned via a FastAPI endpoint and displayed in a Streamlit UI. Retrieval quality can be measured offline using RAGAS metrics.
+**Generation:** Top-ranked chunks are assembled into a prompt context and passed to the LLM. The response is returned via a FastAPI endpoint with full SSE streaming and displayed in a Streamlit UI. Retrieval quality can be measured offline using RAGAS metrics.
+
+**Routing — two modes (switchable via `AGENT_MODE`):**
+
+- **Pipeline mode** (default, `AGENT_MODE=pipeline`): Fixed LangGraph DAG — language detection → optional translation → hybrid retrieval → cross-encoder reranking → intent-specific generation. Robust on any LLM including local Ollama models.
+
+- **ReAct Agent mode** (`AGENT_MODE=react`): Replaces the fixed DAG with a multi-step reasoning loop. The LLM decides which tools to call and how many times, then produces a grounded answer citing source documents. Supports multi-hop questions, comparisons across documents, and procedural queries that benefit from iterative retrieval. Requires an LLM with tool-calling support (OpenAI, Anthropic, Google GenAI, or compatible Ollama models such as `llama3.1` / `qwen2.5`).
+
+  Available tools in ReAct mode:
+
+  | Tool | When the LLM uses it |
+  |------|----------------------|
+  | `hybrid_search(query, top_k)` | Find relevant passages — called once or multiple times with refined queries |
+  | `list_documents()` | Discover which documents are in the knowledge base |
+  | `fetch_document(document_id)` | Read the full text of a named document (e.g. for summaries) |
 
 ## Tech Stack
 
@@ -37,6 +51,7 @@ The system follows a three-stage RAG pipeline:
 | Evaluation | RAGAS |
 | UI | Streamlit |
 | Config | python-dotenv |
+| Agent Flows | LangGraph `create_react_agent` + LangChain `@tool` |
 
 ## Provider Support
 
@@ -50,6 +65,45 @@ Both LLM and embedding backends are swappable through environment variables — 
 - **Groq**
 
 Switch providers by editing `LLM_PROVIDER` and `EMBEDDING_PROVIDER` in your `.env` file. See `.env.example` for per-provider configuration details.
+
+## Agent Mode
+
+The system supports two routing modes, controlled by `AGENT_MODE` in `.env`:
+
+| Mode | Value | Description |
+|------|-------|-------------|
+| Pipeline (default) | `AGENT_MODE=pipeline` | Fixed LangGraph DAG. Works with any LLM including local Ollama models such as `gemma3:4b`. |
+| ReAct Agent | `AGENT_MODE=react` | Multi-step reasoning loop. The LLM calls tools as many times as needed — `hybrid_search` for targeted passages, `list_documents` to navigate the knowledge base, `fetch_document` for full document reads — then cites sources in the final answer. |
+
+**LLM compatibility for ReAct mode:**
+
+`AGENT_MODE=react` requires a model with native tool-calling support. Use `AGENT_MODE=pipeline` (the default) if your model does not support it.
+
+| Provider | Tool-calling support |
+|----------|---------------------|
+| OpenAI (`gpt-4o-mini`, `gpt-4o`) | Yes |
+| Anthropic (`claude-*`) | Yes |
+| Google GenAI (`gemini-*`) | Yes |
+| Azure OpenAI | Yes |
+| Ollama — `llama3.1`, `qwen2.5`, `mistral-nemo` | Yes (model-dependent) |
+| Ollama — `gemma3:4b` (default) | No → use `pipeline` mode |
+
+Example `.env` for ReAct mode with OpenAI:
+
+```dotenv
+AGENT_MODE=react
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+```
+
+Example `.env` for pipeline mode with local Ollama (default, no API key needed):
+
+```dotenv
+AGENT_MODE=pipeline
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=gemma3:4b
+```
 
 ## Quick Start
 
@@ -146,7 +200,9 @@ src/
     routes.py              # REST endpoints (query, ingest, health)
   agent/
     intent_classifier.py   # Query intent detection
-    router.py              # Strategy routing based on intent
+    router.py              # Fixed-DAG pipeline router (AGENT_MODE=pipeline)
+    tools.py               # @tool-decorated hybrid_search + ToolResultStore
+    react_router.py        # ReAct agent router with tool-calling loop (AGENT_MODE=react)
   evaluation/
     evaluator.py           # RAGAS-based retrieval quality metrics
   ui/

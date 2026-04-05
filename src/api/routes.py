@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from src.agent.router import QueryRouter
+    from src.agent.react_router import ReActRouter
     from src.config import Settings
     from src.ingestion.pipeline import IngestionPipeline
     from src.retrieval.bm25_search import BM25Search
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_query_router: "QueryRouter | None" = None
+_query_router: "QueryRouter | ReActRouter | None" = None
 _ingestion_pipeline: "IngestionPipeline | None" = None
 _embedder: "Embedder | None" = None
 _vector_store: "VectorStore | None" = None
@@ -33,7 +34,7 @@ _settings: "Settings | None" = None
 
 
 def set_dependencies(
-    query_router: "QueryRouter",
+    query_router: "QueryRouter | ReActRouter",
     ingestion_pipeline: "IngestionPipeline",
     embedder: "Embedder",
     vector_store: "VectorStore",
