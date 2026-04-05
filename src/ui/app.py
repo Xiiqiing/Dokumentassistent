@@ -200,7 +200,7 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 components.html(
     '<script async src="https://cloud.umami.is/script.js"'
-    ' data-website-id="3f48820e-f670-4916-a230-5d0821f0f546"></script>',
+    ' data-website-id="cf6c908e-1236-4406-8c02-88aa7c9a0db2"></script>',
     height=0,
 )
 
