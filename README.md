@@ -24,9 +24,9 @@ The system follows a three-stage RAG pipeline with an optional Agent Flows mode:
 
 **Routing — two modes (switchable via `AGENT_MODE`):**
 
-- **Pipeline mode** (default, `AGENT_MODE=pipeline`): Fixed LangGraph DAG — language detection → optional translation → hybrid retrieval → cross-encoder reranking → intent-specific generation. Robust on any LLM including local Ollama models.
+- **Pipeline mode** (default, `AGENT_MODE=pipeline`): Fixed LangGraph DAG — language detection → optional translation → hybrid retrieval → cross-encoder reranking → intent-specific generation. Works with lightweight models such as `gemma4`.
 
-- **ReAct Agent mode** (`AGENT_MODE=react`): Replaces the fixed DAG with a multi-step reasoning loop. The LLM decides which tools to call and how many times, then produces a grounded answer citing source documents. Supports multi-hop questions, comparisons across documents, and procedural queries that benefit from iterative retrieval. Requires an LLM with tool-calling support (OpenAI, Anthropic, Google GenAI, or compatible Ollama models such as `llama3.1` / `qwen2.5`).
+- **ReAct Agent mode** (`AGENT_MODE=react`): Replaces the fixed DAG with a multi-step reasoning loop. The LLM decides which tools to call and how many times, then produces a grounded answer citing source documents. Supports multi-hop questions, comparisons across documents, and procedural queries that benefit from iterative retrieval. Requires an LLM with tool-calling support (OpenAI, Anthropic, Google GenAI, or compatible Ollama models such as `llama3.1` / `qwen3`).
 
   Available tools in ReAct mode:
 
@@ -44,7 +44,7 @@ The system follows a three-stage RAG pipeline with an optional Agent Flows mode:
 | Orchestration | LangChain, LangGraph |
 | Vector Store | Qdrant (local mode, no server required) |
 | Embedding | HuggingFace `paraphrase-multilingual-MiniLM-L12-v2` (384 dim) |
-| LLM | `gemma3:4b` (default, runs locally via Ollama) |
+| LLM | `gemma4` (default, runs locally via Ollama) |
 | Sparse Search | rank_bm25 |
 | Reranking | sentence-transformers `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` |
 | PDF Parsing | PyMuPDF (fitz) |
@@ -72,7 +72,7 @@ The system supports two routing modes, controlled by `AGENT_MODE` in `.env`:
 
 | Mode | Value | Description |
 |------|-------|-------------|
-| Pipeline (default) | `AGENT_MODE=pipeline` | Fixed LangGraph DAG. Works with any LLM including local Ollama models such as `gemma3:4b`. |
+| Pipeline (default) | `AGENT_MODE=pipeline` | Fixed LangGraph DAG. Works with lightweight models such as `gemma4` via Ollama — no cloud API required. |
 | ReAct Agent | `AGENT_MODE=react` | Multi-step reasoning loop. The LLM calls tools as many times as needed — `hybrid_search` for targeted passages, `list_documents` to navigate the knowledge base, `fetch_document` for full document reads — then cites sources in the final answer. |
 
 **LLM compatibility for ReAct mode:**
@@ -85,8 +85,9 @@ The system supports two routing modes, controlled by `AGENT_MODE` in `.env`:
 | Anthropic (`claude-*`) | Yes |
 | Google GenAI (`gemini-*`) | Yes |
 | Azure OpenAI | Yes |
+| Groq (`qwen/qwen3-32b`, `llama-3.3-70b-versatile`) | Yes |
 | Ollama — `llama3.1`, `qwen2.5`, `mistral-nemo` | Yes (model-dependent) |
-| Ollama — `gemma3:4b` (default) | No → use `pipeline` mode |
+| Ollama — `gemma4` (default) | No → use `pipeline` mode |
 
 Example `.env` for ReAct mode with OpenAI:
 
@@ -102,7 +103,7 @@ Example `.env` for pipeline mode with local Ollama (default, no API key needed):
 ```dotenv
 AGENT_MODE=pipeline
 LLM_PROVIDER=ollama
-OLLAMA_MODEL=gemma3:4b
+OLLAMA_MODEL=gemma4
 ```
 
 ## Quick Start
@@ -121,7 +122,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Pull the default LLM
-ollama pull gemma3:4b
+ollama pull gemma4:e4b
 
 # Ingest documents (place PDFs in docs/ first)
 python -m scripts.ingest
@@ -146,7 +147,7 @@ cp .env.example .env
 docker compose --profile local up --build
 ```
 
-Starts Qdrant + Ollama + API + UI. The `ollama-init` sidecar pulls `gemma3:4b` on first run.
+Starts Qdrant + Ollama + API + UI. The `ollama-init` sidecar pulls `gemma4` on first run.
 
 | Service | URL |
 |---|---|
@@ -155,7 +156,7 @@ Starts Qdrant + Ollama + API + UI. The `ollama-init` sidecar pulls `gemma3:4b` o
 | Streamlit UI | http://localhost:8501 |
 | Qdrant dashboard | http://localhost:6333/dashboard |
 
-### Cloud mode (OpenAI / Azure / Anthropic / Google)
+### Cloud mode (OpenAI / Azure / Anthropic / Google / Groq)
 
 ```bash
 cp .env.example .env

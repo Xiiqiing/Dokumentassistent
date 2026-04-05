@@ -49,6 +49,10 @@ class Settings:
     azure_openai_deployment: str
     azure_openai_embedding_deployment: str
 
+    # Groq
+    groq_api_key: str
+    groq_model: str
+
     # Anthropic
     anthropic_api_key: str
     anthropic_model: str
@@ -100,7 +104,7 @@ def load_settings() -> Settings:
         collection_name=os.environ.get("COLLECTION_NAME", "ku_documents"),
         embedding_model=os.environ.get("EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2"),
         embedding_dimension=int(os.environ.get("EMBEDDING_DIMENSION", "384")),
-        generation_model=os.environ.get("GENERATION_MODEL", "gemma3:4b"),
+        generation_model=os.environ.get("GENERATION_MODEL", "gemma4:e4b"),
         reranker_model=os.environ.get("RERANKER_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"),
         chunk_size=int(os.environ.get("CHUNK_SIZE", "512")),
         chunk_overlap=int(os.environ.get("CHUNK_OVERLAP", "64")),
@@ -111,7 +115,7 @@ def load_settings() -> Settings:
 
         # Ollama
         ollama_base_url=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
-        ollama_model=os.environ.get("OLLAMA_MODEL", "gemma3:4b"),
+        ollama_model=os.environ.get("OLLAMA_MODEL", "gemma4:e4b"),
 
         # OpenAI
         openai_api_key=os.environ.get("OPENAI_API_KEY", ""),
@@ -124,6 +128,10 @@ def load_settings() -> Settings:
         azure_openai_api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-01"),
         azure_openai_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT", ""),
         azure_openai_embedding_deployment=os.environ.get("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", ""),
+
+        # Groq
+        groq_api_key=os.environ.get("GROQ_API_KEY", ""),
+        groq_model=os.environ.get("GROQ_MODEL", "qwen/qwen3-32b"),
 
         # Anthropic
         anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY", ""),

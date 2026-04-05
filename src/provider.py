@@ -13,7 +13,7 @@ from src.config import Settings
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED_LLM_PROVIDERS = ["ollama", "azure_openai", "openai", "anthropic", "google_genai"]
+_SUPPORTED_LLM_PROVIDERS = ["ollama", "azure_openai", "openai", "groq", "anthropic", "google_genai"]
 _SUPPORTED_EMBEDDING_PROVIDERS = ["local", "azure_openai", "openai", "google_genai"]
 
 
@@ -59,6 +59,16 @@ def create_llm(settings: Settings) -> BaseChatModel:
             return ChatOpenAI(
                 model=settings.openai_model,
                 api_key=settings.openai_api_key,
+                temperature=0.0,
+            )
+
+        case "groq":
+            from langchain_openai import ChatOpenAI
+
+            return ChatOpenAI(
+                model=settings.groq_model,
+                api_key=settings.groq_api_key,
+                base_url="https://api.groq.com/openai/v1",
                 temperature=0.0,
             )
 

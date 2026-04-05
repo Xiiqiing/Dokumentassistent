@@ -54,10 +54,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "- **LLM-integration** — provider-agnostisk, prompt-styret "
             "svargenerering\n"
             "- **Evaluering** — RAGAS-baseret kvalitetsmåling\n"
-            "- **Agent Flows** — valgfri ReAct-loop med værktøjskald: "
-            "LLM bestemmer selv hvor mange søgninger der behøves og "
-            "støtter flertrinræsonnering på tværs af dokumenter "
-            "(`AGENT_MODE=react`)"
+            "- **Agent Flows** — ReAct-loop med værktøjskald."
         ),
         "chunking_label": "Chunking-strategi",
         "chunking_help": "Vælg hvordan dokumenterne opdeles i tekststykker.",
@@ -131,10 +128,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "- **LLM integration** — provider-agnostic, prompt-driven "
             "answer generation\n"
             "- **Evaluation** — RAGAS-based quality measurement\n"
-            "- **Agent Flows** — optional ReAct loop with tool calling: "
-            "the LLM decides how many searches are needed and supports "
-            "multi-step reasoning across documents "
-            "(`AGENT_MODE=react`)"
+            "- **Agent Flows** — ReAct loop with tool calling"
         ),
         "chunking_label": "Chunking strategy",
         "chunking_help": "Choose how documents are split into text chunks.",
