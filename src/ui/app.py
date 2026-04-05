@@ -248,9 +248,14 @@ st.markdown(
         border-right: 1px solid #E0E0E0;
     }
     section[data-testid="stSidebar"] > div:first-child {
-        padding-top: 5.5rem;
+        padding-top: 1rem;
         padding-left: 1.2rem;
         padding-right: 1.2rem;
+    }
+
+    /* ---------- Shrink main area top gap to align title with sidebar heading ---------- */
+    .block-container {
+        padding-top: 1rem !important;
     }
     section[data-testid="stSidebar"] .sidebar-heading {
         font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
