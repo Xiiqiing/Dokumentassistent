@@ -246,13 +246,11 @@ st.markdown(
     section[data-testid="stSidebar"] {
         background-color: #FAFAFA;
         border-right: 1px solid #E0E0E0;
-        min-width: 320px !important;
-        max-width: 320px !important;
     }
     section[data-testid="stSidebar"] > div:first-child {
-        padding-top: 0.75rem;
-        padding-left: 1.4rem;
-        padding-right: 1.4rem;
+        padding-top: 5.5rem;
+        padding-left: 1.2rem;
+        padding-right: 1.2rem;
     }
     section[data-testid="stSidebar"] .sidebar-heading {
         font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
