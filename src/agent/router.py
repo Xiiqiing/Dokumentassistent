@@ -436,6 +436,8 @@ class QueryRouter:
 
         for chunk in self._graph.stream(initial_state, stream_mode="updates"):
             for node_name, update in chunk.items():
+                if update is None:
+                    continue
                 accumulated.update(update)
 
                 event: dict = {"step": node_name}
