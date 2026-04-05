@@ -144,6 +144,7 @@ async def health_check() -> HealthResponse:
             "ollama": _settings.ollama_model,
             "openai": _settings.openai_model,
             "azure_openai": _settings.azure_openai_deployment,
+            "groq": _settings.groq_model,
             "anthropic": _settings.anthropic_model,
             "google_genai": _settings.google_model,
         }
