@@ -31,7 +31,7 @@ def create_app() -> FastAPI:
     """
     settings = load_settings()
 
-    logging.basicConfig(level=getattr(logging, settings.log_level))
+    logging.basicConfig(level=getattr(logging, settings.log_level, logging.INFO))
 
     llm = create_llm(settings)
     embeddings = create_embeddings(settings)

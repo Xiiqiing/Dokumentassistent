@@ -284,13 +284,19 @@ async def ingest_document(request: IngestRequest) -> IngestResponse:
 
     logger.info("Ingesting document: %s", request.file_path)
 
-    chunks = _ingestion_pipeline.ingest_pdf(request.file_path)
+    try:
+        chunks = _ingestion_pipeline.ingest_pdf(request.file_path)
 
-    if chunks:
-        embeddings = _embedder.embed_batch([chunk.text for chunk in chunks])
-        _vector_store.add_chunks(chunks, embeddings)
-        all_chunks = _vector_store.get_all_chunks()
-        _bm25_search.index(all_chunks)
+        if chunks:
+            embeddings = _embedder.embed_batch([chunk.text for chunk in chunks])
+            _vector_store.add_chunks(chunks, embeddings)
+            all_chunks = _vector_store.get_all_chunks()
+            _bm25_search.index(all_chunks)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("Ingestion failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Document ingestion failed") from exc
 
     document_id = os.path.basename(request.file_path)
     logger.info("Ingested %d chunks for document %s", len(chunks), document_id)

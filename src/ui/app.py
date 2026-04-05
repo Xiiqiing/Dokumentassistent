@@ -400,7 +400,7 @@ with st.sidebar:
 
     strategy = st.selectbox(
         t["chunking_label"],
-        options=["recursive", "semantic", "sliding"],
+        options=["fixed_size", "recursive", "semantic"],
         index=0,
         help=t["chunking_help"],
     )
