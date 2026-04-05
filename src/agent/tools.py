@@ -112,9 +112,9 @@ def make_retrieval_tools(
 
         ids = vector_store.list_document_ids()
         if not ids:
-            return "Ingen dokumenter i videnbasen. (Knowledge base is empty.)"
+            return "Ingen dokumenter i vidensbasen. (Knowledge base is empty.)"
         lines = "\n".join(f"- {doc_id}" for doc_id in ids)
-        return f"Dokumenter i videnbasen ({len(ids)} i alt):\n{lines}"
+        return f"Dokumenter i vidensbasen ({len(ids)} i alt):\n{lines}"
 
     @tool
     def fetch_document(document_id: str) -> str:
@@ -138,7 +138,7 @@ def make_retrieval_tools(
         chunks = vector_store.get_chunks_by_document_id(document_id)
         if not chunks:
             return (
-                f"Dokumentet '{document_id}' blev ikke fundet i videnbasen. "
+                f"Dokumentet '{document_id}' blev ikke fundet i vidensbasen. "
                 f"(Document not found. Use list_documents to see available IDs.)"
             )
 

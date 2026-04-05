@@ -40,38 +40,38 @@ TEXTS: dict[str, dict[str, str]] = {
         "lang_label": "Sprog",
         "sidebar_heading": "Om systemet",
         "sidebar_body": (
-            "End-to-end RAG-prototype der goer dansksproget "
-            "dokumenthaandtering selvbetjent.\n\n"
+            "End-to-end RAG-prototype der gør dansksprog "
+            "dokumenthåndtering selvbetjent.\n\n"
             "- **Python + FastAPI** REST-backend\n"
             "- **Ustruktureret data** — PDF-parsing, preprocessing, "
             "tre chunking-strategier\n"
             "- **Embedding-modeller** — flersproget semantisk "
-            "vektorrepraesentation\n"
-            "- **Vektordatabase + hybrid soegning** — Qdrant (semantisk) "
+            "vektorrepræsentation\n"
+            "- **Vektordatabase + hybrid søgning** — Qdrant (semantisk) "
             "+ BM25 (leksikalsk)\n"
-            "- **Reranking** — cross-encoder for praecis relevans\n"
+            "- **Reranking** — cross-encoder for præcis relevans\n"
             "- **RAG-arkitektur** — LangChain + LangGraph-orkestreret pipeline\n"
             "- **LLM-integration** — provider-agnostisk, prompt-styret "
             "svargenerering\n"
-            "- **Evaluering** — RAGAS-baseret kvalitetsmaaling\n"
-            "- **Agent Flows** — valgfri ReAct-loop med vaerktoejskald: "
-            "LLM bestemmer selv hvor mange soegninger der behoeves og "
-            "stoetter flertrinssraesonnering paa tvaers af dokumenter "
+            "- **Evaluering** — RAGAS-baseret kvalitetsmåling\n"
+            "- **Agent Flows** — valgfri ReAct-loop med værktøjskald: "
+            "LLM bestemmer selv hvor mange søgninger der behøves og "
+            "støtter flertrinræsonnering på tværs af dokumenter "
             "(`AGENT_MODE=react`)"
         ),
         "chunking_label": "Chunking-strategi",
-        "chunking_help": "Vaelg hvordan dokumenterne opdeles i tekststykker.",
+        "chunking_help": "Vælg hvordan dokumenterne opdeles i tekststykker.",
         "topk_label": "Antal kilder (top_k)",
-        "topk_help": "Antal dokumentfragmenter der hentes fra sogeindekset.",
+        "topk_help": "Antal dokumentfragmenter der hentes fra søgeindekset.",
         "title": "Dokumentassistent",
         "subtitle": (
-            "Stil et sporgsmål, og systemet finder relevante afsnit "
+            "Stil et spørgsmål, og systemet finder relevante afsnit "
             "i eksempelfiler (såsom politiske dokumenter fra KU)."
         ),
-        "search_label": "Stil et sporgsmål om ... ",
+        "search_label": "Stil et spørgsmål om ... ",
         "search_placeholder": "F.eks.: Hvad er reglerne for behandling af personoplysninger?",
         "search_button": "Søg",
-        "example_button": "Tilfaeldigt eksempel",
+        "example_button": "Tilfældigt eksempel",
         "spinner": "Søger i dokumenterne ...",
         "status_label": "Behandler forespørgsel ...",
         "status_done": "Færdig",
@@ -82,35 +82,35 @@ TEXTS: dict[str, dict[str, str]] = {
         "no_answer": "Intet svar modtaget.",
         "sources_label": "Kilder",
         "page_label": "side",
-        "no_sources": "Ingen kilder fundet for denne foresporgsel.",
-        "empty_warning": "Indtast venligst et sporgsmål.",
+        "no_sources": "Ingen kilder fundet for denne forespørgsel.",
+        "empty_warning": "Indtast venligst et spørgsmål.",
         "err_connection": (
             "Kunne ikke oprette forbindelse til API-serveren. "
-            "Kontroller at backend korer paa http://localhost:8000."
+            "Kontroller at backend kører på http://localhost:8000."
         ),
         "err_api": "API-fejl",
         "err_rate_limit": "API-kvoten er midlertidigt opbrugt. Vent venligst et øjeblik, og prøv igen.",
-        "err_timeout": "Forespoorgslen tog for lang tid. Prøv igen.",
+        "err_timeout": "Forespørgslen tog for lang tid. Prøv igen.",
         "unknown": "ukendt",
         "model_heading": "Aktuel model",
         "model_llm": "LLM",
         "model_embedding": "Embedding",
         "model_unavailable": "Kunne ikke hente modelinfo.",
         "pipeline_heading": "Pipeline-detaljer",
-        "pipeline_translation": "Oversaettelse",
-        "pipeline_original": "Original foresporgsel",
+        "pipeline_translation": "Oversættelse",
+        "pipeline_original": "Original forespørgsel",
         "pipeline_translated": "Oversat til dansk",
         "pipeline_lang": "Sprog registreret",
-        "pipeline_no_translation": "Ingen oversaettelse nødvendig",
-        "pipeline_bm25": "BM25-resultater (leksikalsk soegning)",
-        "pipeline_dense": "Vektorsoegning (semantisk)",
-        "pipeline_fused": "RRF-fusioneret raekkefoelge",
-        "pipeline_reranked": "Reranking (endelig raekkefoelge)",
+        "pipeline_no_translation": "Ingen oversættelse nødvendig",
+        "pipeline_bm25": "BM25-resultater (leksikalsk søgning)",
+        "pipeline_dense": "Vektorsøgning (semantisk)",
+        "pipeline_fused": "RRF-fusioneret rækkefølge",
+        "pipeline_reranked": "Reranking (endelig rækkefølge)",
         "pipeline_doc": "Dokument",
         "pipeline_score": "Score",
         "pipeline_rank": "#",
         "pipeline_no_results": "Ingen resultater",
-        "pipeline_score_change": "Score-aendring",
+        "pipeline_score_change": "Score-ændring",
     },
     "en": {
         "page_title": "Document Assistant",
@@ -259,6 +259,15 @@ st.markdown(
         font-size: 0.92rem;
         color: #555555;
         line-height: 1.55;
+    }
+    section[data-testid="stSidebar"] ul {
+        padding-left: 1.2rem;
+        margin: 0.4rem 0 0 0;
+        list-style-position: outside;
+    }
+    section[data-testid="stSidebar"] li {
+        padding-left: 0.2rem;
+        margin-bottom: 0.35rem;
     }
 
     /* ---------- Source card ---------- */
@@ -518,7 +527,7 @@ if search_clicked and question.strip():
                         _tool_name = _event.get("tool", "")
                         _tool_query = _event.get("query", "")
                         st.write(
-                            (f"Vaerktoej **{_tool_name}** kaldt: _{_tool_query}_")
+                            (f"Værktøj **{_tool_name}** kaldt: _{_tool_query}_")
                             if lang == "da"
                             else (f"Tool **{_tool_name}** called: _{_tool_query}_")
                         )
