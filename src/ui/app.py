@@ -190,7 +190,7 @@ TEXTS: dict[str, dict[str, str]] = {
 # ---------------------------------------------------------------------------
 st.set_page_config(
     page_title="Dokumentassistent",
-    page_icon=None,
+    page_icon="📄",
     layout="centered",
 )
 
