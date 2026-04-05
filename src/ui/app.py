@@ -6,6 +6,8 @@ Single-page document search interface with clean sans-serif design.
 
 import os
 import random
+import threading
+import time
 
 import streamlit as st
 import requests
@@ -29,6 +31,28 @@ EXAMPLE_QUESTIONS: list[str] = [
     "Hvornår kan en leder afvise en klage som åbenbart grundløs?",
     "Hvad er reglerne for forlænget tid til eksamen?",
 ]
+
+# ---------------------------------------------------------------------------
+# Pipeline step labels shown during query processing
+# Each tuple: (label, min_seconds_to_show_before_advancing)
+# The last step has None duration — it stays until the request completes.
+# ---------------------------------------------------------------------------
+PIPELINE_STEPS: dict[str, list[tuple[str, float | None]]] = {
+    "da": [
+        ("Klassificerer forespørgsel ...", 0.7),
+        ("Oversætter til dansk om nødvendigt ...", 1.0),
+        ("Søger med BM25 og vektorsøgning ...", 1.8),
+        ("Fusionerer og reranker resultater ...", 1.2),
+        ("Genererer svar med sprogmodel ...", None),
+    ],
+    "en": [
+        ("Classifying query intent ...", 0.7),
+        ("Translating to Danish if needed ...", 1.0),
+        ("Searching with BM25 and vector search ...", 1.8),
+        ("Fusing and reranking results ...", 1.2),
+        ("Generating answer with language model ...", None),
+    ],
+}
 
 # ---------------------------------------------------------------------------
 # Internationalisation — all UI strings live here
@@ -70,6 +94,9 @@ TEXTS: dict[str, dict[str, str]] = {
         "search_button": "Søg",
         "example_button": "Tilfaeldigt eksempel",
         "spinner": "Søger i dokumenterne ...",
+        "status_label": "Behandler forespørgsel ...",
+        "status_done": "Færdig",
+        "status_error": "Noget gik galt",
         "confidence_label": "Konfidensgrad",
         "intent_label": "Intent",
         "strategy_label": "Strategi",
@@ -142,6 +169,9 @@ TEXTS: dict[str, dict[str, str]] = {
         "search_button": "Search",
         "example_button": "Random question",
         "spinner": "Searching documents ...",
+        "status_label": "Processing query ...",
+        "status_done": "Done",
+        "status_error": "Something went wrong",
         "confidence_label": "Confidence",
         "intent_label": "Intent",
         "strategy_label": "Strategy",
@@ -439,7 +469,10 @@ with st.form(key="search_form", clear_on_submit=False):
 # Query logic
 # ---------------------------------------------------------------------------
 if search_clicked and question.strip():
-    with st.spinner(t["spinner"]):
+    _result: dict = {}
+
+    def _call_api() -> None:
+        """Run the blocking API request in a background thread."""
         try:
             resp = requests.post(
                 f"{API_BASE}/query",
@@ -451,19 +484,44 @@ if search_clicked and question.strip():
                 timeout=120,
             )
             resp.raise_for_status()
-            data = resp.json()
-        except requests.ConnectionError:
+            _result["data"] = resp.json()
+        except Exception as _exc:  # noqa: BLE001
+            _result["error"] = _exc
+
+    _thread = threading.Thread(target=_call_api, daemon=True)
+    _thread.start()
+
+    with st.status(t["status_label"], expanded=True) as _status:
+        for _step_label, _step_duration in PIPELINE_STEPS[lang]:
+            st.write(_step_label)
+            if _step_duration is not None:
+                _deadline = time.monotonic() + _step_duration
+                while time.monotonic() < _deadline and _thread.is_alive():
+                    time.sleep(0.1)
+            else:
+                _thread.join()
+
+        if "error" in _result:
+            _status.update(label=t["status_error"], state="error", expanded=True)
+        else:
+            _status.update(label=t["status_done"], state="complete", expanded=False)
+
+    if "error" in _result:
+        _exc = _result["error"]
+        if isinstance(_exc, requests.ConnectionError):
             st.error(t["err_connection"])
-            st.stop()
-        except requests.HTTPError as exc:
-            if exc.response.status_code == 429:
+        elif isinstance(_exc, requests.HTTPError):
+            if _exc.response.status_code == 429:
                 st.warning(t["err_rate_limit"])
             else:
-                st.error(f'{t["err_api"]}: {exc.response.status_code} -- {exc.response.text}')
-            st.stop()
-        except requests.Timeout:
+                st.error(f'{t["err_api"]}: {_exc.response.status_code} -- {_exc.response.text}')
+        elif isinstance(_exc, requests.Timeout):
             st.error(t["err_timeout"])
-            st.stop()
+        else:
+            st.error(str(_exc))
+        st.stop()
+
+    data = _result.get("data", {})
 
     # -- Metadata bar --
     confidence = data.get("confidence", 0.0)
