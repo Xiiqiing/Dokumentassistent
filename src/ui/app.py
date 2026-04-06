@@ -61,7 +61,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "title": "Dokumentassistent",
         "title_badge": "Demo",
         "subtitle": (
-            "Et dokumentintelligens-system der dækker PDF-indlæsning, semantisk chunking, "
+            "Et dokumentintelligens-system bygget på en RAG-arkitektur, dækkende PDF-indlæsning, semantisk chunking, "
             "hybrid søgning med reranking "
             "og LLM-genererede svar med kildehenvisninger. LLM-laget er provider-agnostisk. "
             "To tilstande: en fast pipeline til lette modeller og en LangGraph ReAct-agent "
@@ -137,7 +137,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "title": "Document Assistant",
         "title_badge": "Demo",
         "subtitle": (
-            "A document intelligence system covering PDF ingestion, semantic chunking, "
+            "A document intelligence system built on a RAG architecture, covering PDF ingestion, semantic chunking, "
             "hybrid retrieval with reranking, "
             "and LLM-generated answers with source citations. The LLM layer is provider-agnostic. "
             "Two modes: a fixed pipeline for lightweight models, a LangGraph ReAct agent "
@@ -250,6 +250,12 @@ st.markdown(
         color: #666666;
         margin: 0 0 2rem 0;
         line-height: 1.6;
+    }
+    @media (max-width: 640px) {
+        .app-subtitle {
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
     }
 
     /* ---------- Sidebar ---------- */
@@ -460,10 +466,11 @@ st.markdown(
     f'</div>',
     unsafe_allow_html=True,
 )
-st.markdown(
-    f'<div class="app-subtitle">{t["subtitle"]}</div>',
-    unsafe_allow_html=True,
-)
+if not st.session_state.get("has_searched"):
+    st.markdown(
+        f'<div class="app-subtitle">{t["subtitle"]}</div>',
+        unsafe_allow_html=True,
+    )
 
 # ---------------------------------------------------------------------------
 # Search form
@@ -488,6 +495,7 @@ with st.form(key="search_form", clear_on_submit=False):
 # Query logic
 # ---------------------------------------------------------------------------
 if search_clicked and question.strip():
+    st.session_state["has_searched"] = True
     data: dict = {}
     _sse_error: dict | None = None
 

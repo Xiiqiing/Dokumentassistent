@@ -12,7 +12,7 @@ noindex: true
 
 **Live Demo:** [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space) — hosted on Hugging Face Spaces
 
-A document intelligence system covering PDF ingestion, semantic chunking, hybrid retrieval with reranking, and LLM-generated answers with source citations. The LLM layer is provider-agnostic. Two modes: a fixed pipeline for lightweight models, a LangGraph ReAct agent for queries that need multiple retrieval steps. Retrieval quality is evaluated with RAGAS.
+A document intelligence system built on a RAG architecture, covering PDF ingestion, semantic chunking, hybrid retrieval with reranking, and LLM-generated answers with source citations. The LLM layer is provider-agnostic. Two modes: a fixed pipeline for lightweight models, a LangGraph ReAct agent for queries that need multiple retrieval steps. Retrieval quality is evaluated with RAGAS.
 
 ## How it works
 
