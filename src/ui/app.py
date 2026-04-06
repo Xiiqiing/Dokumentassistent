@@ -9,7 +9,6 @@ import os
 import random
 
 import streamlit as st
-import streamlit.components.v1 as components
 import requests
 
 API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000")
@@ -205,10 +204,10 @@ st.markdown('<meta name="robots" content="noindex, nofollow">', unsafe_allow_htm
 # ---------------------------------------------------------------------------
 # Analytics — Umami Cloud
 # ---------------------------------------------------------------------------
-components.html(
+st.markdown(
     '<script async src="https://cloud.umami.is/script.js"'
     ' data-website-id="cf6c908e-1236-4406-8c02-88aa7c9a0db2"></script>',
-    height=0,
+    unsafe_allow_html=True,
 )
 
 # ---------------------------------------------------------------------------
