@@ -66,8 +66,8 @@ TEXTS: dict[str, dict[str, str]] = {
             "Et dokumentintelligens-system bygget på en RAG-arkitektur, dækkende PDF-indlæsning, semantisk chunking, "
             "hybrid søgning med reranking "
             "og LLM-genererede svar med kildehenvisninger. LLM-laget er provider-agnostisk. "
-            "To tilstande: en fast pipeline til lette modeller og en LangGraph ReAct-agent "
-            "til forespørgsler der kræver flere søgetrin. Søgekvaliteten evalueres med RAGAS."
+            "To tilstande: en LangGraph ReAct-agent (standard) til forespørgsler der kræver flere søgetrin, "
+            "og en pipeline til lette modeller uden værktøjskald. Søgekvaliteten evalueres med RAGAS."
         ),
         "search_label": "Stil et spørgsmål om ... ",
         "search_placeholder": "F.eks.: Hvad er reglerne for behandling af personoplysninger?",
@@ -144,8 +144,8 @@ TEXTS: dict[str, dict[str, str]] = {
             "A document intelligence system built on a RAG architecture, covering PDF ingestion, semantic chunking, "
             "hybrid retrieval with reranking, "
             "and LLM-generated answers with source citations. The LLM layer is provider-agnostic. "
-            "Two modes: a fixed pipeline for lightweight models, a LangGraph ReAct agent "
-            "for queries that need multiple retrieval steps. "
+            "Two modes: a LangGraph ReAct agent (default) for queries that need multiple retrieval steps, "
+            "and a pipeline for lightweight models without tool-calling support. "
             "Retrieval quality is evaluated with RAGAS."
         ),
         "search_label": "Ask a question ...",

@@ -1,4 +1,14 @@
-"""Query router that selects retrieval strategy based on intent."""
+"""Query router that selects retrieval strategy based on intent.
+--------------------------------------------------------------------
+This is to support lightweight local models (e.g. gemma3) that lack
+tool/function-calling capability. LangGraph moves all routing decisions
+(intent branching, confidence-based retry) into graph edges so the
+pipeline works identically regardless of the underlying model.
+
+This pipeline has a conditional retry loop (low confidence → broaden query → re-retrieve).
+LangGraph makes that cycle, the conditional skip, and per-node streaming
+explicit and testable without hand-rolled flags or callback plumbing.
+"""
 
 import logging
 import unicodedata
@@ -442,65 +452,6 @@ class QueryRouter:
             confidence=final_state["confidence"],
             pipeline_details=pipeline,
         )
-
-        # --- Old if/else routing (replaced by LangGraph above) ---
-        #
-        # user_language, intent = self._detect_language_and_intent(query)
-        # retrieval_query = self._translate_query(query, user_language)
-        # translated = retrieval_query != query
-        #
-        # logger.info("Classified intent: %s", intent.value)
-        # logger.debug("Intent classification result: %s for query='%s'", intent.value, query)
-        #
-        # should_retrieve = intent != IntentType.UNKNOWN
-        # logger.debug("Retrieval executed: %s (intent=%s)", should_retrieve, intent.value)
-        #
-        # pipeline = PipelineDetails(
-        #     original_query=query,
-        #     retrieval_query=retrieval_query,
-        #     detected_language=user_language,
-        #     translated=translated,
-        # )
-        #
-        # if should_retrieve:
-        #     hybrid_result = self._hybrid_retriever.search_detailed(retrieval_query, top_k=top_k)
-        #     pipeline.dense_results = hybrid_result.dense_results
-        #     pipeline.sparse_results = hybrid_result.sparse_results
-        #     pipeline.fused_results = hybrid_result.fused_results
-        #     results = hybrid_result.fused_results
-        # else:
-        #     results = []
-        #
-        # logger.info("Retrieved %d results from hybrid search", len(results))
-        # logger.debug("Retrieval returned %d results", len(results))
-        #
-        # reranked = self._reranker.rerank(retrieval_query, results, top_k=top_k) if results else []
-        # pipeline.reranked_results = reranked
-        # logger.info("Reranked to %d results", len(reranked))
-        #
-        # if reranked and intent == IntentType.FACTUAL:
-        #     intent = IntentType.RAG
-        #     logger.info("Overriding intent to RAG (sources retrieved)")
-        #
-        # context = "\n\n".join(r.chunk.text for r in reranked)
-        # prompt = self._build_prompt(query, intent, context, user_language)
-        #
-        # answer = self._llm_chain.invoke(prompt)
-        # logger.info("Generated answer for intent=%s", intent.value)
-        #
-        # if reranked:
-        #     confidence = max(r.score for r in reranked)
-        #     logger.info("Confidence: %.4f (sigmoid-normalized by reranker)", confidence)
-        # else:
-        #     confidence = 0.0
-        #
-        # return GenerationResponse(
-        #     answer=str(answer),
-        #     sources=reranked,
-        #     intent=intent,
-        #     confidence=confidence,
-        #     pipeline_details=pipeline,
-        # )
 
     def route_stream(self, query: str, top_k: int) -> Generator[dict, None, None]:
         """Stream pipeline events as each LangGraph node completes.

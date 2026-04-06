@@ -2,7 +2,7 @@
 
 **Live Demo:** [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space) — hosted on Hugging Face Spaces
 
-A document intelligence system covering PDF ingestion, semantic chunking, hybrid retrieval with reranking, and LLM-generated answers with source citations. The LLM layer is provider-agnostic. Two modes: a fixed pipeline for lightweight models, a LangGraph ReAct agent for queries that need multiple retrieval steps. Retrieval quality is evaluated with RAGAS.
+A document intelligence system covering PDF ingestion, semantic chunking, hybrid retrieval with reranking, and LLM-generated answers with source citations. The LLM layer is provider-agnostic. Two modes: a LangGraph ReAct agent (default) for queries that need multiple retrieval steps, and a pipeline for lightweight models without tool-calling support. Retrieval quality is evaluated with RAGAS.
 
 ## How it works
 
@@ -12,15 +12,15 @@ At query time both indexes are searched and their results merged with reciprocal
 
 **Two routing modes, switchable via `AGENT_MODE`:**
 
-- **Pipeline** (default): a fixed LangGraph DAG — language detection → optional translation → hybrid retrieval → reranking → generation. Works with lightweight local models like `gemma4`.
-
-- **ReAct Agent** (`AGENT_MODE=react`): replaces the DAG with a reasoning loop where the LLM calls tools as many times as it needs before answering. Useful for multi-hop questions or comparisons across documents. Requires a model with tool-calling support.
+- **ReAct Agent** (default): a reasoning loop where the LLM calls tools as many times as it needs before answering. Useful for multi-hop questions or comparisons across documents. Requires a model with tool-calling support.
 
   | Tool | Purpose |
   |------|---------|
   | `hybrid_search(query, top_k)` | Retrieve relevant passages |
   | `list_documents()` | See what's in the knowledge base |
   | `fetch_document(document_id)` | Read a full document |
+
+- **Pipeline** (`AGENT_MODE=pipeline`): a fixed LangGraph graph — language detection → optional translation → hybrid retrieval → reranking → generation. Works with lightweight local models that lack tool-calling support.
 
 ## Tech Stack
 
@@ -47,10 +47,26 @@ See `.env.example` for per-provider configuration.
 
 | Mode | `AGENT_MODE` | Notes |
 |------|-------------|-------|
-| Pipeline | `pipeline` (default) | Fixed DAG, works with `gemma4` |
-| ReAct | `react` | Tool-calling loop, needs a model that supports tool use |
+| ReAct | `react` (default) | Tool-calling loop, needs a model that supports tool use |
+| Pipeline | `pipeline` | Fixed graph, works with lightweight models that lack tool calling |
 
-Tool-calling is supported by OpenAI, Anthropic, Google GenAI, Azure OpenAI, Groq, and some Ollama models (`llama3.1`, `qwen2.5`, `mistral-nemo`). The default `gemma4` does not support it — use `pipeline` mode with Ollama.
+Tool-calling is supported by OpenAI, Anthropic, Google GenAI, Azure OpenAI, Groq, and some Ollama models (`gemma4`, `llama3.1`, `qwen2.5`, `mistral-nemo`).
+
+ReAct with local Ollama (default):
+
+```dotenv
+AGENT_MODE=react
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=gemma4:e4b
+```
+
+Pipeline with a lightweight model:
+
+```dotenv
+AGENT_MODE=pipeline
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=gemma3
+```
 
 ReAct with OpenAI:
 
@@ -59,14 +75,6 @@ AGENT_MODE=react
 LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o-mini
-```
-
-Pipeline with local Ollama:
-
-```dotenv
-AGENT_MODE=pipeline
-LLM_PROVIDER=ollama
-OLLAMA_MODEL=gemma4
 ```
 
 ## Quick Start
@@ -135,7 +143,7 @@ src/
     reranker.py            # cross-encoder
   api/
     main.py
-    routes.py              # /query, /ingest, /health
+    routes.py              # /query, /query/stream, /ingest, /health
   agent/
     intent_classifier.py
     router.py              # pipeline mode (AGENT_MODE=pipeline)
