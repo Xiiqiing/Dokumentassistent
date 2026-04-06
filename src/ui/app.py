@@ -201,6 +201,8 @@ st.set_page_config(
     layout="centered",
 )
 
+st.markdown('<meta name="robots" content="noindex, nofollow">', unsafe_allow_html=True)
+
 # ---------------------------------------------------------------------------
 # Analytics — Umami Cloud
 # ---------------------------------------------------------------------------

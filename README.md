@@ -10,6 +10,8 @@ noindex: true
 
 # Doc Assistant
 
+**Live Demo:** [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space) — hosted on Hugging Face Spaces
+
 A RAG-based document assistant for Danish-language PDFs, featuring hybrid search, cross-encoder reranking, and structured evaluation.
 
 ## Architecture
