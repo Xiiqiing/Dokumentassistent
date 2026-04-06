@@ -1,6 +1,8 @@
 # Doc Assistant
 
-**Live Demo:** [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space) — hosted on Hugging Face Spaces
+## Live Demo
+
+[xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space) — hosted on Hugging Face Spaces
 
 A document intelligence system covering PDF ingestion, semantic chunking, hybrid retrieval with reranking, and LLM-generated answers with source citations. The LLM layer is provider-agnostic. Two modes: a LangGraph ReAct agent (default) for queries that need multiple retrieval steps, and a pipeline for lightweight models without tool-calling support. Retrieval quality is evaluated with RAGAS.
 
