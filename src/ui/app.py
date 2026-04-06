@@ -392,9 +392,14 @@ st.markdown(
 
     /* ---------- Footer ---------- */
     .app-footer {
-        margin-top: 3rem;
-        padding: 1.2rem 0 0.8rem 0;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 999;
+        background-color: #FFFFFF;
         border-top: 1px solid #E0E0E0;
+        padding: 0.55rem 1.5rem;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -414,12 +419,19 @@ st.markdown(
     .app-footer a:hover {
         color: #901A1E;
     }
+    /* Push main content above the fixed footer */
+    .block-container {
+        padding-bottom: 4rem !important;
+    }
     @media (max-width: 640px) {
         .app-footer {
             flex-direction: column;
-            gap: 0.5rem;
-            text-align: center;
+            gap: 0.3rem;
+            padding: 0.45rem 1rem;
             font-size: 0.78rem;
+        }
+        .block-container {
+            padding-bottom: 5rem !important;
         }
     }
     </style>
