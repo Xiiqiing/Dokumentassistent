@@ -62,9 +62,12 @@ TEXTS: dict[str, dict[str, str]] = {
         "topk_label": "Antal kilder (top_k)",
         "topk_help": "Antal dokumentfragmenter der hentes fra søgeindekset.",
         "title": "Dokumentassistent",
+        "title_badge": "Demo",
         "subtitle": (
-            "Stil et spørgsmål, og systemet finder relevante afsnit "
-            "i eksempelfiler (såsom politiske dokumenter fra KU)."
+            "End-to-end RAG-prototype til dansksproglig dokumenthåndtering. "
+            "Python · FastAPI · LangChain · LangGraph · Qdrant · "
+            "Hybrid søgning (BM25 + semantisk) · Cross-encoder reranking · "
+            "LLM-integration (provider-agnostisk) · RAGAS-evaluering · Streamlit"
         ),
         "search_label": "Stil et spørgsmål om ... ",
         "search_placeholder": "F.eks.: Hvad er reglerne for behandling af personoplysninger?",
@@ -136,9 +139,12 @@ TEXTS: dict[str, dict[str, str]] = {
         "topk_label": "Number of sources (top_k)",
         "topk_help": "Number of document fragments retrieved from the search index.",
         "title": "Document Assistant",
+        "title_badge": "Demo",
         "subtitle": (
-            "Ask a question, and the system will find relevant sections "
-            "in example documents."
+            "End-to-end RAG prototype for Danish-language document Q&amp;A. "
+            "Python · FastAPI · LangChain · LangGraph · Qdrant · "
+            "Hybrid search (BM25 + semantic) · Cross-encoder reranking · "
+            "LLM integration (provider-agnostic) · RAGAS evaluation · Streamlit"
         ),
         "search_label": "Ask a question ...",
         "search_placeholder": "E.g.: What are the rules for processing personal data?",
@@ -444,7 +450,16 @@ with st.sidebar:
 st.markdown('<div class="accent-line"></div>', unsafe_allow_html=True)
 
 # Title block
-st.markdown(f'<div class="app-title">{t["title"]}</div>', unsafe_allow_html=True)
+st.markdown(
+    f'<div class="app-title">'
+    f'{t["title"]}'
+    f'<span style="font-size:1rem; font-weight:500; color:#FFFFFF; '
+    f'background:#901A1E; padding:0.15rem 0.55rem; margin-left:0.6rem; '
+    f'vertical-align:middle; letter-spacing:0.05em;">'
+    f'{t["title_badge"]}</span>'
+    f'</div>',
+    unsafe_allow_html=True,
+)
 st.markdown(
     f'<div class="app-subtitle">{t["subtitle"]}</div>',
     unsafe_allow_html=True,
