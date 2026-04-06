@@ -52,7 +52,9 @@ TEXTS: dict[str, dict[str, str]] = {
             "- **LLM-integration** — provider-agnostisk, prompt-styret "
             "svargenerering\n"
             "- **Evaluering** — RAGAS-baseret kvalitetsmåling\n"
-            "- **Agent Flows** — ReAct-loop med værktøjskald."
+            "- **Agent Flows** — ReAct-loop med værktøjskald.\n"
+            "- [**Kildedokumenter**](https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs)"
+            " — de dokumenter systemet er indekseret fra"
         ),
         "chunking_label": "Chunking-strategi",
         "chunking_help": "Vælg hvordan dokumenterne opdeles i tekststykker.",
@@ -128,7 +130,9 @@ TEXTS: dict[str, dict[str, str]] = {
             "- **LLM integration** — provider-agnostic, prompt-driven "
             "answer generation\n"
             "- **Evaluation** — RAGAS-based quality measurement\n"
-            "- **Agent Flows** — ReAct loop with tool calling"
+            "- **Agent Flows** — ReAct loop with tool calling\n"
+            "- [**Source documents**](https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs)"
+            " — the documents indexed into the knowledge base"
         ),
         "chunking_label": "Chunking strategy",
         "chunking_help": "Choose how documents are split into text chunks.",
