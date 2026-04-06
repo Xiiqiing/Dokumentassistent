@@ -98,6 +98,7 @@ def create_app() -> FastAPI:
             strategy=_parse_strategy(settings),
             chunk_size=settings.chunk_size,
             chunk_overlap=settings.chunk_overlap,
+            embeddings=embeddings,
         ),
         embedder=embedder,
         vector_store=vector_store,

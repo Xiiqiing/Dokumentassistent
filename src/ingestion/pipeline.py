@@ -3,6 +3,8 @@
 import logging
 import os
 
+from langchain_core.embeddings import Embeddings
+
 from src.models import ChunkStrategy, DocumentChunk
 from src.ingestion.pdf_parser import PDFParser
 from src.ingestion.text_cleaner import TextCleaner
@@ -14,17 +16,24 @@ logger = logging.getLogger(__name__)
 class IngestionPipeline:
     """Orchestrates the full document ingestion workflow."""
 
-    def __init__(self, strategy: ChunkStrategy, chunk_size: int, chunk_overlap: int) -> None:
+    def __init__(
+        self,
+        strategy: ChunkStrategy,
+        chunk_size: int,
+        chunk_overlap: int,
+        embeddings: Embeddings | None = None,
+    ) -> None:
         """Initialize the ingestion pipeline.
 
         Args:
             strategy: Chunking strategy to apply.
             chunk_size: Maximum characters per chunk.
             chunk_overlap: Overlap between consecutive chunks.
+            embeddings: LangChain Embeddings instance (required for SEMANTIC strategy).
         """
         self.parser = PDFParser()
         self.cleaner = TextCleaner()
-        self.chunker = create_chunker(strategy, chunk_size, chunk_overlap)
+        self.chunker = create_chunker(strategy, chunk_size, chunk_overlap, embeddings)
 
     def ingest_text_file(self, file_path: str) -> list[DocumentChunk]:
         """Ingest a plain text file through the cleaning and chunking pipeline.
