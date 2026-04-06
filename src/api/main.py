@@ -114,7 +114,7 @@ def create_app() -> FastAPI:
 def _parse_strategy(settings: "Settings") -> "ChunkStrategy":  # noqa: F821
     """Return the default chunking strategy from config."""
     from src.models import ChunkStrategy
-    return ChunkStrategy.RECURSIVE
+    return ChunkStrategy.SEMANTIC
 
 
 app: FastAPI = create_app()

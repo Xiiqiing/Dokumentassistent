@@ -469,7 +469,7 @@ with st.sidebar:
     strategy = st.selectbox(
         t["chunking_label"],
         options=["fixed_size", "recursive", "semantic"],
-        index=0,
+        index=2,
         help=t["chunking_help"],
     )
 
