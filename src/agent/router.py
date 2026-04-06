@@ -15,6 +15,11 @@ from src.retrieval.reranker import Reranker
 
 logger = logging.getLogger(__name__)
 
+# Reranker confidence below this triggers a query-broadening retry.
+# Cross-encoder sigmoid scores below 0.3 generally indicate poor relevance.
+_LOW_CONFIDENCE_THRESHOLD = 0.3
+_MAX_RETRIES = 1
+
 
 class RouterState(TypedDict):
     """LangGraph state passed between routing nodes.
@@ -31,6 +36,7 @@ class RouterState(TypedDict):
         fused_results: Results after RRF fusion.
         reranked: Results after cross-encoder reranking.
         confidence: Max reranker score (0.0-1.0).
+        retry_count: Number of query-broadening retries performed so far.
         answer: Final generated answer.
     """
 
@@ -45,6 +51,7 @@ class RouterState(TypedDict):
     fused_results: list[QueryResult]
     reranked: list[QueryResult]
     confidence: float
+    retry_count: int
     answer: str
 
 
@@ -70,6 +77,7 @@ def _make_initial_state(query: str, top_k: int) -> RouterState:
         fused_results=[],
         reranked=[],
         confidence=0.0,
+        retry_count=0,
         answer="",
     )
 
@@ -274,6 +282,53 @@ class QueryRouter:
             logger.info("Confidence: %.4f (sigmoid-normalized by reranker)", confidence)
         return {"reranked": reranked, "confidence": confidence}
 
+    def _broaden_query_node(self, state: RouterState) -> dict:
+        """Rewrite the retrieval query when reranker confidence is low.
+
+        Uses the LLM to generate alternative search terms while preserving
+        the original meaning, then increments the retry counter.
+        """
+        prompt = (
+            "The following search query did not return good results from "
+            "the document database. Rewrite it to be broader or use "
+            "different keywords while keeping the same meaning. "
+            "Reply with ONLY the rewritten query, nothing else.\n\n"
+            f"Original question: {state['query']}\n"
+            f"Failed search query: {state['retrieval_query']}"
+        )
+        broadened = str(self._llm_chain.invoke(prompt)).strip()
+        logger.info(
+            "Broadened query for retry %d: %s",
+            state["retry_count"] + 1,
+            broadened,
+        )
+        return {
+            "retrieval_query": broadened,
+            "retry_count": state["retry_count"] + 1,
+        }
+
+    @staticmethod
+    def _check_confidence(state: RouterState) -> str:
+        """Decide whether to retry retrieval or proceed to generation.
+
+        Triggers a retry when results exist but confidence is below
+        the threshold and retries remain.  Empty results (no documents
+        matched at all) are not retried — broadening cannot help when
+        the knowledge base simply lacks coverage.
+        """
+        if (
+            state.get("reranked")
+            and state["confidence"] < _LOW_CONFIDENCE_THRESHOLD
+            and state["retry_count"] < _MAX_RETRIES
+        ):
+            logger.info(
+                "Low confidence (%.4f < %.2f), retrying with broadened query",
+                state["confidence"],
+                _LOW_CONFIDENCE_THRESHOLD,
+            )
+            return "retry"
+        return "accept"
+
     @staticmethod
     def _update_intent_node(state: RouterState) -> dict:
         """Promote FACTUAL to RAG when sources are found."""
@@ -295,19 +350,28 @@ class QueryRouter:
 
     @staticmethod
     def _should_retrieve(state: RouterState) -> str:
-        """Skip retrieval when intent is UNKNOWN."""
-        return "retrieve" if state["intent"] != IntentType.UNKNOWN else "rerank"
+        """Skip retrieval entirely when intent is UNKNOWN."""
+        return "retrieve" if state["intent"] != IntentType.UNKNOWN else "generate"
 
     def _build_graph(self) -> object:
         """Build the LangGraph routing graph.
 
-        Nodes:
-            detect    → detect language and intent
-            translate → translate query to Danish if needed
-            retrieve  → hybrid search (skipped when intent is UNKNOWN)
-            rerank    → cross-encoder reranking
-            update_intent → promote FACTUAL to RAG when sources are found
-            generate  → build prompt and call LLM
+        Graph topology::
+
+            detect → translate ─┬─ (UNKNOWN) ──────────────→ generate
+                                └─ (other)  → retrieve → rerank
+                                                 ↑          │
+                                                 │      check_confidence
+                                                 │        │       │
+                                              broaden ←─ retry  accept
+                                              _query        → update_intent
+                                                                  │
+                                                               generate
+
+        Key LangGraph features demonstrated:
+            - Conditional edges: intent-based skip, confidence-based routing
+            - Cycle: low-confidence retry loop (broaden_query → retrieve)
+            - Shared state: retry_count controls loop termination
 
         Returns:
             Compiled LangGraph graph.
@@ -317,18 +381,30 @@ class QueryRouter:
         graph.add_node("translate", self._translate_node)
         graph.add_node("retrieve", self._retrieve_node)
         graph.add_node("rerank", self._rerank_node)
+        graph.add_node("broaden_query", self._broaden_query_node)
         graph.add_node("update_intent", self._update_intent_node)
         graph.add_node("generate", self._generate_node)
 
         graph.set_entry_point("detect")
         graph.add_edge("detect", "translate")
+
+        # Branch: skip retrieval entirely for off-topic queries
         graph.add_conditional_edges(
             "translate",
             self._should_retrieve,
-            {"retrieve": "retrieve", "rerank": "rerank"},
+            {"retrieve": "retrieve", "generate": "generate"},
         )
+
         graph.add_edge("retrieve", "rerank")
-        graph.add_edge("rerank", "update_intent")
+
+        # Branch + cycle: retry with broadened query on low confidence
+        graph.add_conditional_edges(
+            "rerank",
+            self._check_confidence,
+            {"retry": "broaden_query", "accept": "update_intent"},
+        )
+        graph.add_edge("broaden_query", "retrieve")  # ← the loop
+
         graph.add_edge("update_intent", "generate")
         graph.add_edge("generate", END)
 
@@ -461,6 +537,9 @@ class QueryRouter:
                 elif node_name == "rerank":
                     event["reranked_count"] = len(update.get("reranked", []))
                     event["confidence"] = round(update.get("confidence", 0.0), 4)
+                elif node_name == "broaden_query":
+                    event["retrieval_query"] = update.get("retrieval_query", "")
+                    event["retry_count"] = update.get("retry_count", 0)
 
                 yield event
 

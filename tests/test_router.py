@@ -143,7 +143,6 @@ class TestQueryRouterDirect:
         """UNKNOWN intent skips retrieval and returns zero confidence."""
         classifier, retriever, reranker, llm_chain = mock_components
 
-        reranker.rerank.return_value = []
         _setup_llm_chain_danish(llm_chain, "Fallback answer", intent="unknown")
 
         router = QueryRouter(classifier, retriever, reranker, llm_chain)
@@ -153,6 +152,7 @@ class TestQueryRouterDirect:
         assert response.intent == IntentType.UNKNOWN
         assert response.confidence == 0.0
         retriever.search_detailed.assert_not_called()
+        reranker.rerank.assert_not_called()
 
     def test_unknown_intent_prompt_uses_generic_instruction(
         self, mock_components
@@ -160,7 +160,6 @@ class TestQueryRouterDirect:
         """UNKNOWN intent should use the generic helpful instruction."""
         classifier, retriever, reranker, llm_chain = mock_components
 
-        reranker.rerank.return_value = []
         _setup_llm_chain_danish(llm_chain, "answer", intent="unknown")
 
         router = QueryRouter(classifier, retriever, reranker, llm_chain)
@@ -300,3 +299,63 @@ class TestSigmoidInReranker:
         response = router.route("test", top_k=3)
 
         assert response.confidence == pytest.approx(0.9, abs=1e-6)
+
+
+class TestLowConfidenceRetry:
+    """Tests for the query-broadening retry loop on low confidence."""
+
+    def test_low_confidence_triggers_retry(self, mock_components) -> None:
+        """When reranker returns low-confidence results, the query should be
+        broadened and retrieval retried once."""
+        classifier, retriever, reranker, llm_chain = mock_components
+
+        low_results = [_make_query_result("weak match", 0.15)]
+        good_results = [_make_query_result("strong match", 0.85)]
+
+        retriever.search_detailed.return_value = _make_hybrid_result(low_results)
+        # First rerank: low confidence → triggers retry
+        # Second rerank: high confidence → proceeds to generate
+        reranker.rerank.side_effect = [low_results, good_results]
+
+        # LLM calls: detect, broaden_query, generate
+        combined = "language: Danish\nintent: factual"
+        llm_chain.invoke.side_effect = [combined, "bredere søgning", "Final answer"]
+
+        router = QueryRouter(classifier, retriever, reranker, llm_chain)
+        response = router.route("snævert spørgsmål", top_k=3)
+
+        assert response.answer == "Final answer"
+        assert response.confidence == pytest.approx(0.85, abs=1e-6)
+        assert retriever.search_detailed.call_count == 2
+        assert reranker.rerank.call_count == 2
+
+    def test_empty_results_do_not_trigger_retry(self, mock_components) -> None:
+        """When reranker returns no results at all, retrying is skipped."""
+        classifier, retriever, reranker, llm_chain = mock_components
+
+        retriever.search_detailed.return_value = _make_hybrid_result([])
+        reranker.rerank.return_value = []
+        _setup_llm_chain_danish(llm_chain, "No information found", intent="factual")
+
+        router = QueryRouter(classifier, retriever, reranker, llm_chain)
+        response = router.route("asdfghjkl", top_k=3)
+
+        assert response.confidence == 0.0
+        assert retriever.search_detailed.call_count == 1
+        # Reranker still called once (with empty input, returns [])
+        assert reranker.rerank.call_count <= 1
+
+    def test_high_confidence_skips_retry(self, mock_components) -> None:
+        """When confidence is above threshold, no retry is attempted."""
+        classifier, retriever, reranker, llm_chain = mock_components
+
+        results = [_make_query_result("good match", 0.9)]
+        retriever.search_detailed.return_value = _make_hybrid_result(results)
+        reranker.rerank.return_value = results
+        _setup_llm_chain_danish(llm_chain, "answer", intent="factual")
+
+        router = QueryRouter(classifier, retriever, reranker, llm_chain)
+        router.route("test", top_k=3)
+
+        assert retriever.search_detailed.call_count == 1
+        assert reranker.rerank.call_count == 1
