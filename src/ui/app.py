@@ -466,11 +466,8 @@ st.markdown(
     f'</div>',
     unsafe_allow_html=True,
 )
-if not st.session_state.get("has_searched"):
-    st.markdown(
-        f'<div class="app-subtitle">{t["subtitle"]}</div>',
-        unsafe_allow_html=True,
-    )
+# Subtitle placeholder — filled after we know whether search was clicked
+_subtitle_slot = st.empty()
 
 # ---------------------------------------------------------------------------
 # Search form
@@ -490,6 +487,13 @@ with st.form(key="search_form", clear_on_submit=False):
         search_clicked = st.form_submit_button(t["search_button"], use_container_width=True)
     with col_example:
         st.form_submit_button(t["example_button"], on_click=_pick_example, use_container_width=True)
+
+# Show subtitle only when no search is active
+if not search_clicked and not st.session_state.get("has_searched"):
+    _subtitle_slot.markdown(
+        f'<div class="app-subtitle">{t["subtitle"]}</div>',
+        unsafe_allow_html=True,
+    )
 
 # ---------------------------------------------------------------------------
 # Query logic
