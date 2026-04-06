@@ -547,7 +547,10 @@ class QueryRouter:
                 "Be clear and actionable."
             ),
             IntentType.UNKNOWN: (
-                "Answer the question as helpfully as possible based on the provided context."
+                "This question is outside the KU document knowledge base. "
+                "Begin your answer with a brief note that you are a document assistant for the "
+                "University of Copenhagen and this topic is not covered in the available documents. "
+                "Then answer the question as helpfully as possible from general knowledge."
             ),
         }
 
@@ -565,5 +568,6 @@ class QueryRouter:
             f"Instruction: {instruction}\n\n"
             f"Context:\n{context}\n\n"
             f"Question: {query}\n\n"
-            f"Answer:"
+            f"REMINDER: {language_rule}\n\n"
+            f"Answer in {user_language}:"
         )
