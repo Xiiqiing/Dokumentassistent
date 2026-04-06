@@ -394,8 +394,9 @@ st.markdown(
     .app-footer {
         position: fixed;
         bottom: 0;
-        left: 0;
-        right: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100vw;
         z-index: 999;
         background-color: #FFFFFF;
         border-top: 1px solid #E0E0E0;
