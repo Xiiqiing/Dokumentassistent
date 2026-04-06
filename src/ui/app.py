@@ -243,6 +243,13 @@ st.markdown(
         color: #901A1E;
         margin: 0 0 0.4rem 0;
         letter-spacing: -0.02em;
+        white-space: nowrap;
+    }
+    @media (max-width: 640px) {
+        .app-title {
+            font-size: clamp(1.3rem, 6vw, 2.2rem);
+            white-space: nowrap;
+        }
     }
     .app-subtitle {
         font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -681,6 +688,10 @@ if search_clicked and question.strip():
                 )
                 st.markdown("---")
 
+            def _truncate_doc(name: str, max_len: int = 30) -> str:
+                """Truncate long document names for table display."""
+                return name if len(name) <= max_len else name[:max_len - 1] + "…"
+
             def _render_result_table(results: list[dict], label: str) -> None:
                 """Render a ranked results table."""
                 st.markdown(f"**{label}**")
@@ -689,7 +700,7 @@ if search_clicked and question.strip():
                     return
                 header = f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | {t["pipeline_score"]} |\n|---|---|---|'
                 rows = "\n".join(
-                    f'| {i + 1} | {r.get("document_id", "")} | {r.get("score", 0):.4f} |'
+                    f'| {i + 1} | {_truncate_doc(r.get("document_id", ""))} | {r.get("score", 0):.4f} |'
                     for i, r in enumerate(results)
                 )
                 st.markdown(f"{header}\n{rows}")
@@ -733,7 +744,7 @@ if search_clicked and question.strip():
                     else:
                         change = "-"
                     rows_list.append(
-                        f'| {i + 1} | {r.get("document_id", "")} | {new_score:.4f} | {change} |'
+                        f'| {i + 1} | {_truncate_doc(r.get("document_id", ""))} | {new_score:.4f} | {change} |'
                     )
                 st.markdown(f"{header}\n" + "\n".join(rows_list))
             else:
