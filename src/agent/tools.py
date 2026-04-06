@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 from langchain_core.tools import tool
 
-from src.models import QueryResult
+from src.models import DocumentChunk, QueryResult
 from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
 from src.retrieval.vector_store import VectorStore
@@ -18,13 +18,19 @@ class ToolResultStore:
     """Captures structured retrieval results produced during tool invocations.
 
     Attributes:
-        retrieved: Accumulated QueryResult list across all hybrid_search calls,
+        retrieved: Accumulated QueryResult list across all tool calls,
             merged by chunk_id and sorted by descending score.
         tool_calls: Log of (tool_name, query_or_arg) tuples in invocation order.
+        dense_results: Accumulated dense retrieval results across hybrid_search calls.
+        sparse_results: Accumulated sparse (BM25) retrieval results across hybrid_search calls.
+        fused_results: Accumulated RRF-fused results across hybrid_search calls.
     """
 
     retrieved: list[QueryResult] = field(default_factory=list)
     tool_calls: list[tuple[str, str]] = field(default_factory=list)
+    dense_results: list[QueryResult] = field(default_factory=list)
+    sparse_results: list[QueryResult] = field(default_factory=list)
+    fused_results: list[QueryResult] = field(default_factory=list)
 
 
 def make_retrieval_tools(
@@ -78,7 +84,20 @@ def make_retrieval_tools(
         hybrid_result = hybrid_retriever.search_detailed(query, top_k=top_k)
         results = reranker.rerank(query, hybrid_result.fused_results, top_k=top_k)
 
-        # Accumulate results across multiple calls (union by chunk_id, keep highest score)
+        # Accumulate intermediate pipeline stages
+        def _merge(existing_list: list[QueryResult], new_list: list[QueryResult]) -> list[QueryResult]:
+            by_id = {r.chunk.chunk_id: r for r in existing_list}
+            for r in new_list:
+                cid = r.chunk.chunk_id
+                if cid not in by_id or r.score > by_id[cid].score:
+                    by_id[cid] = r
+            return sorted(by_id.values(), key=lambda r: r.score, reverse=True)
+
+        store.dense_results = _merge(store.dense_results, hybrid_result.dense_results)
+        store.sparse_results = _merge(store.sparse_results, hybrid_result.sparse_results)
+        store.fused_results = _merge(store.fused_results, hybrid_result.fused_results)
+
+        # Accumulate reranked results across multiple calls (union by chunk_id, keep highest score)
         existing = {r.chunk.chunk_id: r for r in store.retrieved}
         for r in results:
             cid = r.chunk.chunk_id
@@ -144,6 +163,15 @@ def make_retrieval_tools(
 
         # Sort chunks by chunk_id to preserve document order
         chunks.sort(key=lambda c: c.chunk_id)
+
+        # Register chunks as QueryResult so confidence and sources are surfaced in the UI.
+        # Score 1.0 indicates a direct full-document fetch (no ranking involved).
+        existing = {r.chunk.chunk_id: r for r in store.retrieved}
+        for chunk in chunks:
+            if chunk.chunk_id not in existing:
+                existing[chunk.chunk_id] = QueryResult(chunk=chunk, score=1.0, source="fetch_document")
+        store.retrieved = sorted(existing.values(), key=lambda r: r.score, reverse=True)
+
         full_text = "\n\n".join(c.text for c in chunks)
         return (
             f"Dokument: {document_id}  ({len(chunks)} afsnit)\n\n"

@@ -160,6 +160,9 @@ class ReActRouter:
             pipeline_details=PipelineDetails(
                 original_query=query,
                 retrieval_query=", ".join(q for _, q in store.tool_calls) or query,
+                dense_results=store.dense_results,
+                sparse_results=store.sparse_results,
+                fused_results=store.fused_results,
                 reranked_results=sources,
             ),
         )
@@ -236,18 +239,10 @@ class ReActRouter:
                     "retrieval_query": ", ".join(q for _, q in store.tool_calls) or query,
                     "detected_language": "unknown",
                     "translated": False,
-                    "dense_results": [],
-                    "sparse_results": [],
-                    "fused_results": [],
-                    "reranked_results": [
-                        {
-                            "document_id": r.chunk.document_id,
-                            "chunk_id": r.chunk.chunk_id,
-                            "score": r.score,
-                            "source": r.source,
-                        }
-                        for r in sources
-                    ],
+                    "dense_results": _ser_sources(store.dense_results),
+                    "sparse_results": _ser_sources(store.sparse_results),
+                    "fused_results": _ser_sources(store.fused_results),
+                    "reranked_results": _ser_sources(sources),
                 },
             },
         }
