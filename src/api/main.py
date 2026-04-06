@@ -83,12 +83,12 @@ def create_app() -> FastAPI:
     else:
         logger.info("Agent mode: pipeline (fixed DAG)")
         intent_classifier = IntentClassifier(llm=llm, model_name=settings.generation_model)
-        generator = llm | StrOutputParser()
+        llm_chain = llm | StrOutputParser()
         query_router = QueryRouter(
             intent_classifier=intent_classifier,
             hybrid_retriever=hybrid_retriever,
             reranker=reranker,
-            generator=generator,
+            llm_chain=llm_chain,
             translate_query=settings.translate_query,
         )
 
@@ -113,9 +113,18 @@ def create_app() -> FastAPI:
 
 
 def _parse_strategy(settings: "Settings") -> "ChunkStrategy":  # noqa: F821
-    """Return the default chunking strategy from config."""
+    """Return the chunking strategy from config, defaulting to SEMANTIC.
+
+    Reads the CHUNK_STRATEGY environment variable via settings. Falls back
+    to SEMANTIC when the variable is unset or empty.
+    """
     from src.models import ChunkStrategy
-    return ChunkStrategy.SEMANTIC
+
+    raw = getattr(settings, "chunk_strategy", "semantic")
+    try:
+        return ChunkStrategy(raw)
+    except ValueError:
+        return ChunkStrategy.SEMANTIC
 
 
 app: FastAPI = create_app()

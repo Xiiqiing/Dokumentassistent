@@ -98,12 +98,12 @@ def main() -> None:
         )
         reranker = Reranker(model=create_reranker(settings.reranker_model))
         classifier = IntentClassifier(llm=llm)
-        generator = llm | StrOutputParser()
+        llm_chain = llm | StrOutputParser()
         router = QueryRouter(
             intent_classifier=classifier,
             hybrid_retriever=hybrid,
             reranker=reranker,
-            generator=generator,
+            llm_chain=llm_chain,
         )
 
         # --- 5) Run query ---

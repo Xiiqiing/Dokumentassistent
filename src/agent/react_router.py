@@ -39,20 +39,6 @@ _SYSTEM_PROMPT = (
 )
 
 
-def _ser_sources(sources: list[QueryResult]) -> list[dict]:
-    """Serialise QueryResult list to a JSON-safe list of dicts."""
-    return [
-        {
-            "chunk_id": r.chunk.chunk_id,
-            "document_id": r.chunk.document_id,
-            "text": r.chunk.text,
-            "score": r.score,
-            "source": r.source,
-        }
-        for r in sources
-    ]
-
-
 class ReActRouter:
     """Routes queries through a multi-step ReAct agent with tool-calling LLM.
 
@@ -231,7 +217,7 @@ class ReActRouter:
             "step": "done",
             "result": {
                 "answer": answer,
-                "sources": _ser_sources(sources),
+                "sources": [r.to_dict() for r in sources],
                 "intent": (IntentType.RAG if sources else IntentType.FACTUAL).value,
                 "confidence": confidence,
                 "pipeline_details": {
@@ -239,10 +225,10 @@ class ReActRouter:
                     "retrieval_query": ", ".join(q for _, q in store.tool_calls) or query,
                     "detected_language": "unknown",
                     "translated": False,
-                    "dense_results": _ser_sources(store.dense_results),
-                    "sparse_results": _ser_sources(store.sparse_results),
-                    "fused_results": _ser_sources(store.fused_results),
-                    "reranked_results": _ser_sources(sources),
+                    "dense_results": [r.to_dict(include_text=False) for r in store.dense_results],
+                    "sparse_results": [r.to_dict(include_text=False) for r in store.sparse_results],
+                    "fused_results": [r.to_dict(include_text=False) for r in store.fused_results],
+                    "reranked_results": [r.to_dict(include_text=False) for r in sources],
                 },
             },
         }

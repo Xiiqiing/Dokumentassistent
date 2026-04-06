@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 from langchain_core.tools import tool
 
-from src.models import DocumentChunk, QueryResult
+from src.models import QueryResult
 from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
 from src.retrieval.vector_store import VectorStore

@@ -3,9 +3,7 @@
 import logging
 from dataclasses import dataclass
 
-from langchain_core.documents import Document
-
-from src.models import ChunkStrategy, DocumentChunk, QueryResult
+from src.models import DocumentChunk, QueryResult
 from src.retrieval.bm25_search import BM25Search
 from src.retrieval.embedder import Embedder
 from src.retrieval.vector_store import VectorStore
@@ -70,8 +68,6 @@ class HybridRetriever:
     def search_detailed(self, query: str, top_k: int) -> HybridSearchResult:
         """Execute hybrid search and return all intermediate results.
 
-        Uses LangChain BaseRetriever.invoke() for both dense and sparse retrieval.
-
         Args:
             query: The search query string.
             top_k: Number of top results to return after fusion.
@@ -79,14 +75,9 @@ class HybridRetriever:
         Returns:
             HybridSearchResult containing dense, sparse, and fused results.
         """
-        dense_retriever = self._vector_store.as_retriever(self._embedder, top_k)
-        sparse_retriever = self._bm25_search.as_retriever(top_k)
-
-        dense_docs: list[Document] = dense_retriever.invoke(query)
-        sparse_docs: list[Document] = sparse_retriever.invoke(query)
-
-        dense_results = [self._doc_to_query_result(doc, "dense") for doc in dense_docs]
-        sparse_results = [self._doc_to_query_result(doc, "bm25") for doc in sparse_docs]
+        query_embedding = self._embedder.embed_text(query)
+        dense_results = self._vector_store.search(query_embedding, top_k)
+        sparse_results = self._bm25_search.search(query, top_k)
 
         logger.debug(
             "Hybrid search: %d dense, %d sparse results",
@@ -100,27 +91,6 @@ class HybridRetriever:
             sparse_results=sparse_results,
             fused_results=fused[:top_k],
         )
-
-    @staticmethod
-    def _doc_to_query_result(doc: Document, source: str) -> QueryResult:
-        """Convert a LangChain Document to a QueryResult.
-
-        Args:
-            doc: Document returned by a BaseRetriever.
-            source: Retrieval source label (e.g. 'dense' or 'bm25').
-
-        Returns:
-            QueryResult with chunk and score populated from document metadata.
-        """
-        meta = doc.metadata
-        chunk = DocumentChunk(
-            chunk_id=meta.get("chunk_id", ""),
-            document_id=meta.get("document_id", ""),
-            text=doc.page_content,
-            metadata=meta.get("chunk_metadata", {}),
-            strategy=ChunkStrategy(meta.get("strategy", ChunkStrategy.RECURSIVE.value)),
-        )
-        return QueryResult(chunk=chunk, score=float(meta.get("score", 0.0)), source=source)
 
     def reciprocal_rank_fusion(
         self,
@@ -138,9 +108,8 @@ class HybridRetriever:
         Returns:
             Merged and re-ranked list of QueryResult objects.
         """
-        # Map chunk_id -> (rrf_score, best QueryResult)
         scores: dict[str, float] = {}
-        best_chunk: dict[str, QueryResult] = {}
+        best_chunk: dict[str, DocumentChunk] = {}
 
         for rank, result in enumerate(dense_results):
             cid = result.chunk.chunk_id

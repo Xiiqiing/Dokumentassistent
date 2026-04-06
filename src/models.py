@@ -56,6 +56,26 @@ class QueryResult:
     score: float
     source: str
 
+    def to_dict(self, *, include_text: bool = True) -> dict[str, str | float]:
+        """Serialise to a JSON-safe dictionary.
+
+        Args:
+            include_text: Whether to include the chunk text (default True).
+
+        Returns:
+            Dictionary with chunk_id, document_id, score, source, and
+            optionally text.
+        """
+        d: dict[str, str | float] = {
+            "chunk_id": self.chunk.chunk_id,
+            "document_id": self.chunk.document_id,
+            "score": self.score,
+            "source": self.source,
+        }
+        if include_text:
+            d["text"] = self.chunk.text
+        return d
+
 
 @dataclass
 class PipelineDetails:

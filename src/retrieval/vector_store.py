@@ -2,18 +2,31 @@
 
 import json
 import logging
-from typing import Any
 
-from langchain_core.callbacks import CallbackManagerForRetrieverRun
-from langchain_core.documents import Document
-from langchain_core.retrievers import BaseRetriever
-from pydantic import ConfigDict
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PointStruct, VectorParams
 
 from src.models import ChunkStrategy, DocumentChunk, QueryResult
 
 logger = logging.getLogger(__name__)
+
+
+def _payload_to_chunk(payload: dict) -> DocumentChunk:
+    """Convert a Qdrant payload dict to a DocumentChunk.
+
+    Args:
+        payload: Qdrant point payload.
+
+    Returns:
+        DocumentChunk reconstructed from the payload.
+    """
+    return DocumentChunk(
+        chunk_id=payload["chunk_id"],
+        document_id=payload["document_id"],
+        text=payload["text"],
+        metadata=json.loads(payload["metadata"]),
+        strategy=ChunkStrategy(payload["strategy"]),
+    )
 
 
 class VectorStore:
@@ -96,18 +109,10 @@ class VectorStore:
             limit=top_k,
         ).points
 
-        results: list[QueryResult] = []
-        for hit in hits:
-            payload = hit.payload
-            chunk = DocumentChunk(
-                chunk_id=payload["chunk_id"],
-                document_id=payload["document_id"],
-                text=payload["text"],
-                metadata=json.loads(payload["metadata"]),
-                strategy=ChunkStrategy(payload["strategy"]),
-            )
-            results.append(QueryResult(chunk=chunk, score=hit.score, source="dense"))
-
+        results: list[QueryResult] = [
+            QueryResult(chunk=_payload_to_chunk(hit.payload), score=hit.score, source="dense")
+            for hit in hits
+        ]
         logger.debug("Dense search returned %d results", len(results))
         return results
 
@@ -129,18 +134,7 @@ class VectorStore:
             with_vectors=False,
         )
 
-        chunks: list[DocumentChunk] = []
-        for record in records:
-            payload = record.payload
-            chunks.append(
-                DocumentChunk(
-                    chunk_id=payload["chunk_id"],
-                    document_id=payload["document_id"],
-                    text=payload["text"],
-                    metadata=json.loads(payload["metadata"]),
-                    strategy=ChunkStrategy(payload["strategy"]),
-                )
-            )
+        chunks = [_payload_to_chunk(record.payload) for record in records]
         logger.info("Loaded %d chunks from collection '%s'", len(chunks), self._collection_name)
         return chunks
 
@@ -176,67 +170,13 @@ class VectorStore:
             with_vectors=False,
         )
 
-        chunks: list[DocumentChunk] = []
-        for record in records:
-            payload = record.payload
-            chunks.append(
-                DocumentChunk(
-                    chunk_id=payload["chunk_id"],
-                    document_id=payload["document_id"],
-                    text=payload["text"],
-                    metadata=json.loads(payload["metadata"]),
-                    strategy=ChunkStrategy(payload["strategy"]),
-                )
-            )
+        chunks = [_payload_to_chunk(record.payload) for record in records]
         logger.debug(
             "Fetched %d chunks for document '%s'", len(chunks), document_id
         )
         return chunks
 
-    def as_retriever(self, embedder: Any, top_k: int) -> BaseRetriever:
-        """Return a LangChain BaseRetriever wrapping this vector store.
-
-        Args:
-            embedder: Embedder instance used to encode queries.
-            top_k: Number of results to return per query.
-
-        Returns:
-            A BaseRetriever that calls search() and returns Documents.
-        """
-        return _VectorStoreRetrieverAdapter(
-            vector_store=self, embedder=embedder, top_k=top_k
-        )
-
     def delete_collection(self) -> None:
         """Delete the entire collection from the store."""
         self._client.delete_collection(collection_name=self._collection_name)
         logger.info("Deleted Qdrant collection '%s'", self._collection_name)
-
-
-class _VectorStoreRetrieverAdapter(BaseRetriever):
-    """LangChain BaseRetriever adapter over VectorStore."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    vector_store: Any
-    embedder: Any
-    top_k: int
-
-    def _get_relevant_documents(
-        self, query: str, *, run_manager: CallbackManagerForRetrieverRun
-    ) -> list[Document]:
-        query_embedding = self.embedder.embed_text(query)
-        results = self.vector_store.search(query_embedding, self.top_k)
-        return [
-            Document(
-                page_content=r.chunk.text,
-                metadata={
-                    "chunk_id": r.chunk.chunk_id,
-                    "document_id": r.chunk.document_id,
-                    "chunk_metadata": r.chunk.metadata,
-                    "strategy": r.chunk.strategy.value,
-                    "score": r.score,
-                },
-            )
-            for r in results
-        ]

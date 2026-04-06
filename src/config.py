@@ -26,6 +26,7 @@ class Settings:
     embedding_dimension: int
     generation_model: str
     reranker_model: str
+    chunk_strategy: str
     chunk_size: int
     chunk_overlap: int
     top_k: int
@@ -106,6 +107,7 @@ def load_settings() -> Settings:
         embedding_dimension=int(os.environ.get("EMBEDDING_DIMENSION", "384")),
         generation_model=os.environ.get("GENERATION_MODEL", "gemma4:e4b"),
         reranker_model=os.environ.get("RERANKER_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"),
+        chunk_strategy=os.environ.get("CHUNK_STRATEGY", "semantic"),
         chunk_size=int(os.environ.get("CHUNK_SIZE", "512")),
         chunk_overlap=int(os.environ.get("CHUNK_OVERLAP", "64")),
         top_k=int(os.environ.get("TOP_K", "5")),

@@ -48,6 +48,32 @@ class RouterState(TypedDict):
     answer: str
 
 
+def _make_initial_state(query: str, top_k: int) -> RouterState:
+    """Create a fresh RouterState with sensible defaults.
+
+    Args:
+        query: The user's original query.
+        top_k: Number of results to retrieve.
+
+    Returns:
+        RouterState ready to be passed into the graph.
+    """
+    return RouterState(
+        query=query,
+        top_k=top_k,
+        user_language="Danish",
+        intent=IntentType.UNKNOWN,
+        retrieval_query=query,
+        translated=False,
+        dense_results=[],
+        sparse_results=[],
+        fused_results=[],
+        reranked=[],
+        confidence=0.0,
+        answer="",
+    )
+
+
 class QueryRouter:
     """Routes queries to appropriate retrieval and generation pipelines."""
 
@@ -56,7 +82,7 @@ class QueryRouter:
         intent_classifier: IntentClassifier,
         hybrid_retriever: HybridRetriever,
         reranker: Reranker,
-        generator: Runnable,
+        llm_chain: Runnable,
         *,
         translate_query: bool = True,
     ) -> None:
@@ -66,7 +92,8 @@ class QueryRouter:
             intent_classifier: IntentClassifier instance.
             hybrid_retriever: HybridRetriever instance.
             reranker: Reranker instance.
-            generator: LLM generation chain.
+            llm_chain: LLM chain (llm | StrOutputParser) for generation,
+                translation, and language detection.
             translate_query: Whether to translate non-Danish queries to Danish
                 before retrieval. When False, language detection still runs for
                 the answer-language rule but no translation is performed.
@@ -74,7 +101,7 @@ class QueryRouter:
         self._intent_classifier = intent_classifier
         self._hybrid_retriever = hybrid_retriever
         self._reranker = reranker
-        self._generator = generator
+        self._llm_chain = llm_chain
         self._translate_query_enabled = translate_query
         self._graph = self._build_graph()
 
@@ -155,7 +182,7 @@ class QueryRouter:
             "intent: <intent>\n\n"
             f"Query: {query}"
         )
-        raw = str(self._generator.invoke(prompt)).strip()
+        raw = str(self._llm_chain.invoke(prompt)).strip()
         logger.debug("Combined detection raw response: %s", raw)
 
         # Parse response
@@ -200,9 +227,76 @@ class QueryRouter:
             "Reply with ONLY the translated text, nothing else.\n\n"
             f"Text: {query}"
         )
-        translated = str(self._generator.invoke(translate_prompt)).strip()
+        translated = str(self._llm_chain.invoke(translate_prompt)).strip()
         logger.info("Translated query to Danish: %s", translated)
         return translated
+
+    # ------------------------------------------------------------------
+    # LangGraph node functions
+    # ------------------------------------------------------------------
+
+    def _detect_node(self, state: RouterState) -> dict:
+        """Detect language and classify intent."""
+        user_language, intent = self._detect_language_and_intent(state["query"])
+        return {"user_language": user_language, "intent": intent}
+
+    def _translate_node(self, state: RouterState) -> dict:
+        """Translate query to Danish if needed."""
+        retrieval_query = self._translate_query(state["query"], state["user_language"])
+        return {
+            "retrieval_query": retrieval_query,
+            "translated": retrieval_query != state["query"],
+        }
+
+    def _retrieve_node(self, state: RouterState) -> dict:
+        """Run hybrid search."""
+        hybrid_result = self._hybrid_retriever.search_detailed(
+            state["retrieval_query"], top_k=state["top_k"]
+        )
+        logger.info("Retrieved %d results from hybrid search", len(hybrid_result.fused_results))
+        return {
+            "dense_results": hybrid_result.dense_results,
+            "sparse_results": hybrid_result.sparse_results,
+            "fused_results": hybrid_result.fused_results,
+        }
+
+    def _rerank_node(self, state: RouterState) -> dict:
+        """Rerank fused results with cross-encoder."""
+        results = state.get("fused_results", [])
+        reranked = (
+            self._reranker.rerank(state["retrieval_query"], results, top_k=state["top_k"])
+            if results
+            else []
+        )
+        confidence = max(r.score for r in reranked) if reranked else 0.0
+        logger.info("Reranked to %d results", len(reranked))
+        if reranked:
+            logger.info("Confidence: %.4f (sigmoid-normalized by reranker)", confidence)
+        return {"reranked": reranked, "confidence": confidence}
+
+    @staticmethod
+    def _update_intent_node(state: RouterState) -> dict:
+        """Promote FACTUAL to RAG when sources are found."""
+        if state.get("reranked") and state["intent"] == IntentType.FACTUAL:
+            logger.info("Overriding intent to RAG (sources retrieved)")
+            return {"intent": IntentType.RAG}
+        return {}
+
+    def _generate_node(self, state: RouterState) -> dict:
+        """Build prompt and call LLM."""
+        reranked = state.get("reranked", [])
+        context = "\n\n".join(r.chunk.text for r in reranked)
+        prompt = self._build_prompt(
+            state["query"], state["intent"], context, state["user_language"]
+        )
+        answer = self._llm_chain.invoke(prompt)
+        logger.info("Generated answer for intent=%s", state["intent"].value)
+        return {"answer": str(answer)}
+
+    @staticmethod
+    def _should_retrieve(state: RouterState) -> str:
+        """Skip retrieval when intent is UNKNOWN."""
+        return "retrieve" if state["intent"] != IntentType.UNKNOWN else "rerank"
 
     def _build_graph(self) -> object:
         """Build the LangGraph routing graph.
@@ -218,75 +312,19 @@ class QueryRouter:
         Returns:
             Compiled LangGraph graph.
         """
-
-        def detect_node(state: RouterState) -> dict:
-            user_language, intent = self._detect_language_and_intent(state["query"])
-            return {"user_language": user_language, "intent": intent}
-
-        def translate_node(state: RouterState) -> dict:
-            retrieval_query = self._translate_query(state["query"], state["user_language"])
-            return {
-                "retrieval_query": retrieval_query,
-                "translated": retrieval_query != state["query"],
-            }
-
-        def retrieve_node(state: RouterState) -> dict:
-            hybrid_result = self._hybrid_retriever.search_detailed(
-                state["retrieval_query"], top_k=state["top_k"]
-            )
-            logger.info("Retrieved %d results from hybrid search", len(hybrid_result.fused_results))
-            return {
-                "dense_results": hybrid_result.dense_results,
-                "sparse_results": hybrid_result.sparse_results,
-                "fused_results": hybrid_result.fused_results,
-            }
-
-        def rerank_node(state: RouterState) -> dict:
-            results = state.get("fused_results", [])
-            reranked = (
-                self._reranker.rerank(state["retrieval_query"], results, top_k=state["top_k"])
-                if results
-                else []
-            )
-            confidence = max(r.score for r in reranked) if reranked else 0.0
-            logger.info("Reranked to %d results", len(reranked))
-            if reranked:
-                logger.info("Confidence: %.4f (sigmoid-normalized by reranker)", confidence)
-            return {"reranked": reranked, "confidence": confidence}
-
-        def update_intent_node(state: RouterState) -> dict:
-            if state.get("reranked") and state["intent"] == IntentType.FACTUAL:
-                logger.info("Overriding intent to RAG (sources retrieved)")
-                return {"intent": IntentType.RAG}
-            return {}
-
-        def generate_node(state: RouterState) -> dict:
-            reranked = state.get("reranked", [])
-            context = "\n\n".join(r.chunk.text for r in reranked)
-            prompt = self._build_prompt(
-                state["query"], state["intent"], context, state["user_language"]
-            )
-            answer = self._generator.invoke(prompt)
-            logger.info("Generated answer for intent=%s", state["intent"].value)
-            return {"answer": str(answer)}
-
-        def should_retrieve(state: RouterState) -> str:
-            """Skip retrieval when intent is UNKNOWN."""
-            return "retrieve" if state["intent"] != IntentType.UNKNOWN else "rerank"
-
         graph: StateGraph = StateGraph(RouterState)
-        graph.add_node("detect", detect_node)
-        graph.add_node("translate", translate_node)
-        graph.add_node("retrieve", retrieve_node)
-        graph.add_node("rerank", rerank_node)
-        graph.add_node("update_intent", update_intent_node)
-        graph.add_node("generate", generate_node)
+        graph.add_node("detect", self._detect_node)
+        graph.add_node("translate", self._translate_node)
+        graph.add_node("retrieve", self._retrieve_node)
+        graph.add_node("rerank", self._rerank_node)
+        graph.add_node("update_intent", self._update_intent_node)
+        graph.add_node("generate", self._generate_node)
 
         graph.set_entry_point("detect")
         graph.add_edge("detect", "translate")
         graph.add_conditional_edges(
             "translate",
-            should_retrieve,
+            self._should_retrieve,
             {"retrieve": "retrieve", "rerank": "rerank"},
         )
         graph.add_edge("retrieve", "rerank")
@@ -308,22 +346,7 @@ class QueryRouter:
         """
         logger.info("Routing query: %s", query)
 
-        initial_state: RouterState = {
-            "query": query,
-            "top_k": top_k,
-            "user_language": "Danish",
-            "intent": IntentType.UNKNOWN,
-            "retrieval_query": query,
-            "translated": False,
-            "dense_results": [],
-            "sparse_results": [],
-            "fused_results": [],
-            "reranked": [],
-            "confidence": 0.0,
-            "answer": "",
-        }
-
-        final_state: RouterState = self._graph.invoke(initial_state)
+        final_state: RouterState = self._graph.invoke(_make_initial_state(query, top_k))
 
         pipeline = PipelineDetails(
             original_query=query,
@@ -386,7 +409,7 @@ class QueryRouter:
         # context = "\n\n".join(r.chunk.text for r in reranked)
         # prompt = self._build_prompt(query, intent, context, user_language)
         #
-        # answer = self._generator.invoke(prompt)
+        # answer = self._llm_chain.invoke(prompt)
         # logger.info("Generated answer for intent=%s", intent.value)
         #
         # if reranked:
@@ -417,24 +440,9 @@ class QueryRouter:
         Yields:
             Step event dicts, then a final ``done`` event with the result.
         """
-        initial_state: RouterState = {
-            "query": query,
-            "top_k": top_k,
-            "user_language": "Danish",
-            "intent": IntentType.UNKNOWN,
-            "retrieval_query": query,
-            "translated": False,
-            "dense_results": [],
-            "sparse_results": [],
-            "fused_results": [],
-            "reranked": [],
-            "confidence": 0.0,
-            "answer": "",
-        }
+        accumulated: dict = dict(_make_initial_state(query, top_k))
 
-        accumulated: dict = dict(initial_state)
-
-        for chunk in self._graph.stream(initial_state, stream_mode="updates"):
+        for chunk in self._graph.stream(_make_initial_state(query, top_k), stream_mode="updates"):
             for node_name, update in chunk.items():
                 if update is None:
                     continue
@@ -453,23 +461,11 @@ class QueryRouter:
                 elif node_name == "rerank":
                     event["reranked_count"] = len(update.get("reranked", []))
                     event["confidence"] = round(update.get("confidence", 0.0), 4)
-                # update_intent and generate: no extra fields needed
 
                 yield event
 
         # Build the final response from accumulated state and emit as "done"
         reranked: list = accumulated.get("reranked", [])
-
-        def _ser(results: list) -> list[dict]:
-            return [
-                {
-                    "document_id": r.chunk.document_id,
-                    "chunk_id": r.chunk.chunk_id,
-                    "score": r.score,
-                    "source": r.source,
-                }
-                for r in results
-            ]
 
         pd_acc = PipelineDetails(
             original_query=query,
@@ -486,16 +482,7 @@ class QueryRouter:
             "step": "done",
             "result": {
                 "answer": accumulated.get("answer", ""),
-                "sources": [
-                    {
-                        "chunk_id": r.chunk.chunk_id,
-                        "document_id": r.chunk.document_id,
-                        "text": r.chunk.text,
-                        "score": r.score,
-                        "source": r.source,
-                    }
-                    for r in reranked
-                ],
+                "sources": [r.to_dict() for r in reranked],
                 "intent": accumulated.get("intent", IntentType.UNKNOWN).value,
                 "confidence": accumulated.get("confidence", 0.0),
                 "pipeline_details": {
@@ -503,10 +490,10 @@ class QueryRouter:
                     "retrieval_query": pd_acc.retrieval_query,
                     "detected_language": pd_acc.detected_language,
                     "translated": pd_acc.translated,
-                    "dense_results": _ser(pd_acc.dense_results),
-                    "sparse_results": _ser(pd_acc.sparse_results),
-                    "fused_results": _ser(pd_acc.fused_results),
-                    "reranked_results": _ser(pd_acc.reranked_results),
+                    "dense_results": [r.to_dict(include_text=False) for r in pd_acc.dense_results],
+                    "sparse_results": [r.to_dict(include_text=False) for r in pd_acc.sparse_results],
+                    "fused_results": [r.to_dict(include_text=False) for r in pd_acc.fused_results],
+                    "reranked_results": [r.to_dict(include_text=False) for r in pd_acc.reranked_results],
                 },
             },
         }

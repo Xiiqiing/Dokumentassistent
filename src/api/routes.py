@@ -183,27 +183,7 @@ async def query_documents(request: QueryRequest) -> QueryResponse:
             ) from exc
         raise
 
-    sources = [
-        {
-            "chunk_id": result.chunk.chunk_id,
-            "document_id": result.chunk.document_id,
-            "text": result.chunk.text,
-            "score": result.score,
-            "source": result.source,
-        }
-        for result in response.sources
-    ]
-
-    def _to_pipeline_items(results: list) -> list[PipelineResultItem]:
-        return [
-            PipelineResultItem(
-                document_id=r.chunk.document_id,
-                chunk_id=r.chunk.chunk_id,
-                score=r.score,
-                source=r.source,
-            )
-            for r in results
-        ]
+    sources = [result.to_dict() for result in response.sources]
 
     pd = response.pipeline_details
     pipeline_details = PipelineDetailsResponse(
@@ -211,10 +191,10 @@ async def query_documents(request: QueryRequest) -> QueryResponse:
         retrieval_query=pd.retrieval_query,
         detected_language=pd.detected_language,
         translated=pd.translated,
-        dense_results=_to_pipeline_items(pd.dense_results),
-        sparse_results=_to_pipeline_items(pd.sparse_results),
-        fused_results=_to_pipeline_items(pd.fused_results),
-        reranked_results=_to_pipeline_items(pd.reranked_results),
+        dense_results=[PipelineResultItem(**r.to_dict(include_text=False)) for r in pd.dense_results],
+        sparse_results=[PipelineResultItem(**r.to_dict(include_text=False)) for r in pd.sparse_results],
+        fused_results=[PipelineResultItem(**r.to_dict(include_text=False)) for r in pd.fused_results],
+        reranked_results=[PipelineResultItem(**r.to_dict(include_text=False)) for r in pd.reranked_results],
     )
 
     return QueryResponse(
