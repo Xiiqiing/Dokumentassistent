@@ -41,8 +41,6 @@ TEXTS: dict[str, dict[str, str]] = {
         "lang_label": "Sprog",
         "sidebar_heading": "Om systemet",
         "sidebar_body": (
-            "End-to-end RAG-prototype der gør dansksprog "
-            "dokumenthåndtering selvbetjent.\n\n"
             "- **Python + FastAPI** REST-backend\n"
             "- **Ustruktureret data** — PDF-parsing, preprocessing, "
             "tre chunking-strategier\n"
@@ -64,10 +62,11 @@ TEXTS: dict[str, dict[str, str]] = {
         "title": "Dokumentassistent",
         "title_badge": "Demo",
         "subtitle": (
-            "End-to-end RAG-prototype til dansksproglig dokumenthåndtering. "
-            "Python · FastAPI · LangChain · LangGraph · Qdrant · "
-            "Hybrid søgning (BM25 + semantisk) · Cross-encoder reranking · "
-            "LLM-integration (provider-agnostisk) · RAGAS-evaluering · Streamlit"
+            "Et dokumentintelligens-system der dækker PDF-indlæsning, semantisk chunking, "
+            "hybrid søgning med reranking "
+            "og LLM-genererede svar med kildehenvisninger. LLM-laget er provider-agnostisk. "
+            "To tilstande: en fast pipeline til lette modeller og en LangGraph ReAct-agent "
+            "til forespørgsler der kræver flere søgetrin. Søgekvaliteten evalueres med RAGAS."
         ),
         "search_label": "Stil et spørgsmål om ... ",
         "search_placeholder": "F.eks.: Hvad er reglerne for behandling af personoplysninger?",
@@ -118,8 +117,6 @@ TEXTS: dict[str, dict[str, str]] = {
         "lang_label": "Language",
         "sidebar_heading": "About the system",
         "sidebar_body": (
-            "End-to-end RAG prototype that makes Danish-language "
-            "document Q&A self-service.\n\n"
             "- **Python + FastAPI** REST backend\n"
             "- **Unstructured data** — PDF parsing, preprocessing, "
             "three chunking strategies\n"
@@ -141,10 +138,12 @@ TEXTS: dict[str, dict[str, str]] = {
         "title": "Document Assistant",
         "title_badge": "Demo",
         "subtitle": (
-            "End-to-end RAG prototype for Danish-language document Q&amp;A. "
-            "Python · FastAPI · LangChain · LangGraph · Qdrant · "
-            "Hybrid search (BM25 + semantic) · Cross-encoder reranking · "
-            "LLM integration (provider-agnostic) · RAGAS evaluation · Streamlit"
+            "A document intelligence system covering PDF ingestion, semantic chunking, "
+            "hybrid retrieval with reranking, "
+            "and LLM-generated answers with source citations. The LLM layer is provider-agnostic. "
+            "Two modes: a fixed pipeline for lightweight models, a LangGraph ReAct agent "
+            "for queries that need multiple retrieval steps. "
+            "Retrieval quality is evaluated with RAGAS."
         ),
         "search_label": "Ask a question ...",
         "search_placeholder": "E.g.: What are the rules for processing personal data?",
