@@ -391,11 +391,21 @@ st.markdown(
     }
 
     /* ---------- Footer ---------- */
+    /* Clear transforms on ALL ancestors so position:fixed works */
+    *:has(> .app-footer),
+    *:has(.app-footer) {
+        transform: none !important;
+    }
     .app-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 999;
+        background-color: #FFFFFF;
         text-align: center;
         border-top: 1px solid #E0E0E0;
         padding: 0.55rem 1.5rem;
-        margin-top: 2rem;
         font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         font-size: 0.82rem;
         color: #888888;
@@ -415,10 +425,17 @@ st.markdown(
         margin: 0 0.6rem;
         color: #CCCCCC;
     }
+    /* Push main content above the fixed footer */
+    .block-container {
+        padding-bottom: 4rem !important;
+    }
     @media (max-width: 640px) {
         .app-footer {
             padding: 0.45rem 1rem;
             font-size: 0.78rem;
+        }
+        .block-container {
+            padding-bottom: 5rem !important;
         }
     }
     </style>
