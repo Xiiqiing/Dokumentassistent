@@ -14,7 +14,6 @@ from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from src.agent.router import QueryRouter
-    from src.agent.react_router import ReActRouter
     from src.agent.plan_and_execute import PlanAndExecuteRouter
     from src.config import Settings
     from src.ingestion.pipeline import IngestionPipeline
@@ -26,7 +25,19 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_query_router: "QueryRouter | ReActRouter | PlanAndExecuteRouter | None" = None
+
+def _is_rate_limit_error(exc_str: str) -> bool:
+    """Check whether an exception string indicates a rate-limit / quota error."""
+    lower = exc_str.lower()
+    return (
+        "429" in exc_str
+        or "resource_exhausted" in lower
+        or "rate" in lower
+        or "too many requests" in lower
+    )
+
+
+_query_router: "QueryRouter | PlanAndExecuteRouter | None" = None
 _ingestion_pipeline: "IngestionPipeline | None" = None
 _embedder: "Embedder | None" = None
 _vector_store: "VectorStore | None" = None
@@ -35,7 +46,7 @@ _settings: "Settings | None" = None
 
 
 def set_dependencies(
-    query_router: "QueryRouter | ReActRouter | PlanAndExecuteRouter",
+    query_router: "QueryRouter | PlanAndExecuteRouter",
     ingestion_pipeline: "IngestionPipeline",
     embedder: "Embedder",
     vector_store: "VectorStore",
@@ -190,7 +201,7 @@ async def query_documents(request: QueryRequest) -> QueryResponse:
         response = _query_router.route(query=request.question, top_k=request.top_k)
     except Exception as exc:
         exc_str = str(exc)
-        if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str or "rate" in exc_str.lower():
+        if _is_rate_limit_error(exc_str):
             logger.warning("Rate limit / quota exhausted: %s", exc_str)
             raise HTTPException(
                 status_code=429,
@@ -247,7 +258,7 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
                 event_queue.put(event)
         except Exception as exc:
             exc_str = str(exc)
-            if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str or "rate" in exc_str.lower():
+            if _is_rate_limit_error(exc_str):
                 event_queue.put({"step": "error", "code": 429, "message": exc_str})
             else:
                 event_queue.put({"step": "error", "code": 500, "message": exc_str})
@@ -257,7 +268,7 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
     threading.Thread(target=_run, daemon=True).start()
 
     async def _generate():
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         while True:
             event = await loop.run_in_executor(None, event_queue.get)
             if event is None:

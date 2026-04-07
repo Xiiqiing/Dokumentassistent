@@ -17,15 +17,33 @@ logger = logging.getLogger(__name__)
 _THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
 
 
-def _strip_think(text: str) -> str:
-    """Remove ``<think>...</think>`` reasoning blocks from LLM output.
+def _extract_content(result: object) -> str:
+    """Extract plain text from an LLM invoke result.
+
+    Handles AIMessage (content: str or list), plain strings, etc.
 
     Args:
-        text: Raw LLM output.
+        result: Return value of ``llm.invoke()`` or ``chain.invoke()``.
 
     Returns:
-        Cleaned text with think blocks removed.
+        Cleaned text with ``<think>`` blocks removed.
     """
+    if hasattr(result, "content"):
+        content = result.content
+    else:
+        content = result
+
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and "text" in block:
+                parts.append(block["text"])
+        text = "\n".join(parts)
+    else:
+        text = str(content)
+
     return _THINK_RE.sub("", text).strip()
 
 
@@ -302,8 +320,7 @@ def make_retrieval_tools(
                 "Reply with ONLY the queries, one per line, nothing else.\n\n"
                 f"Question: {question}"
             )
-            _result = llm_chain.invoke(decompose_prompt)
-            raw = _strip_think(_result.content if hasattr(_result, "content") else str(_result))
+            raw = _extract_content(llm_chain.invoke(decompose_prompt))
             sub_queries = [q.strip().lstrip("0123456789.-) ") for q in raw.splitlines() if q.strip()]
             if not sub_queries:
                 sub_queries = [question]
@@ -383,8 +400,7 @@ def make_retrieval_tools(
                 f"Document ID: {document_id}\n\n"
                 f"Document text:\n{full_text}"
             )
-            _result = llm_chain.invoke(summary_prompt)
-            summary = _strip_think(_result.content if hasattr(_result, "content") else str(_result))
+            summary = _extract_content(llm_chain.invoke(summary_prompt))
             return f"Resumé af {document_id}:\n\n{summary}"
 
         tools.extend([multi_query_search, summarize_document])

@@ -153,7 +153,6 @@ src/
     intent_classifier.py
     router.py              # pipeline mode (AGENT_MODE=pipeline)
     tools.py               # 6 retrieval tools + ToolResultStore
-    react_router.py        # legacy ReAct loop (superseded by plan_and_execute)
     plan_and_execute.py    # Plan-and-Execute agent (AGENT_MODE=react)
     memory.py              # conversation memory for multi-turn
   evaluation/

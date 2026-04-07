@@ -28,8 +28,27 @@ logger = logging.getLogger(__name__)
 _THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
 
 
-def _strip_think(text: str) -> str:
-    """Remove ``<think>...</think>`` reasoning blocks from LLM output."""
+def _extract_content(result: object) -> str:
+    """Extract plain text from an LLM invoke result.
+
+    Handles AIMessage (content: str or list), plain strings, etc.
+    """
+    if hasattr(result, "content"):
+        content = result.content
+    else:
+        content = result
+
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and "text" in block:
+                parts.append(block["text"])
+        text = "\n".join(parts)
+    else:
+        text = str(content)
+
     return _THINK_RE.sub("", text).strip()
 
 
@@ -152,7 +171,7 @@ class QueryRouter:
             "intent: <intent>\n\n"
             f"Query: {query}"
         )
-        raw = _strip_think(str(self._llm_chain.invoke(prompt)))
+        raw = _extract_content(self._llm_chain.invoke(prompt))
         logger.debug("Combined detection raw response: %s", raw)
 
         # Parse response
@@ -197,7 +216,7 @@ class QueryRouter:
             "Reply with ONLY the translated text, nothing else.\n\n"
             f"Text: {query}"
         )
-        translated = _strip_think(str(self._llm_chain.invoke(translate_prompt)))
+        translated = _extract_content(self._llm_chain.invoke(translate_prompt))
         logger.info("Translated query to Danish: %s", translated)
         return translated
 
@@ -258,7 +277,7 @@ class QueryRouter:
             f"Original question: {state['query']}\n"
             f"Failed search query: {state['retrieval_query']}"
         )
-        broadened = _strip_think(str(self._llm_chain.invoke(prompt)))
+        broadened = _extract_content(self._llm_chain.invoke(prompt))
         logger.info(
             "Broadened query for retry %d: %s",
             state["retry_count"] + 1,
@@ -306,7 +325,7 @@ class QueryRouter:
         prompt = self._build_prompt(
             state["query"], state["intent"], context, state["user_language"]
         )
-        answer = _strip_think(str(self._llm_chain.invoke(prompt)))
+        answer = _extract_content(self._llm_chain.invoke(prompt))
         logger.info("Generated answer for intent=%s", state["intent"].value)
         return {"answer": answer}
 

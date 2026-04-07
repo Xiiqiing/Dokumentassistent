@@ -91,7 +91,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "Kontroller at backend kører på http://localhost:8000."
         ),
         "err_api": "API-fejl",
-        "err_rate_limit": "API-kvoten er midlertidigt opbrugt. Vent venligst et øjeblik, og prøv igen.",
+        "err_rate_limit": "For mange samtidige forespørgsler, eller API-kvoten er midlertidigt opbrugt. Vent venligst et øjeblik, og prøv igen.",
         "err_timeout": "Forespørgslen tog for lang tid. Prøv igen.",
         "unknown": "ukendt",
         "model_heading": "Aktuel model",
@@ -172,7 +172,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "Make sure the backend is running at http://localhost:8000."
         ),
         "err_api": "API error",
-        "err_rate_limit": "The API quota is temporarily exhausted. Please wait a moment and try again.",
+        "err_rate_limit": "Too many simultaneous requests, or API quota temporarily exhausted. Please wait a moment and try again.",
         "err_timeout": "The request took too long. Please try again.",
         "unknown": "unknown",
         "model_heading": "Current model",
@@ -671,7 +671,10 @@ if search_clicked and question.strip():
                     if not _line.startswith("data: "):
                         continue
 
-                    _event = json.loads(_line[6:])
+                    try:
+                        _event = json.loads(_line[6:])
+                    except json.JSONDecodeError:
+                        continue
                     _step = _event.get("step", "")
 
                     if _step == "detect":

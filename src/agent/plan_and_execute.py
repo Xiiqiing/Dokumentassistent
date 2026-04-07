@@ -157,7 +157,6 @@ class PlanAndExecuteRouter:
         self._reranker = reranker
         self._vector_store = vector_store
         self._default_top_k = default_top_k
-        self._store = ToolResultStore()
         self._memory = memory or ConversationMemory()
 
     # ------------------------------------------------------------------
@@ -174,8 +173,7 @@ class PlanAndExecuteRouter:
                 f"{history}\n\n"
             )
         prompt = _PLANNER_PROMPT + history_section + f'Question: "{state["query"]}"'
-        result = self._llm.invoke(prompt)
-        raw = _strip_think(result.content if hasattr(result, "content") else str(result))
+        raw = _extract_content(self._llm.invoke(prompt))
         logger.info("Planner raw output: %s", raw)
 
         plan = _parse_plan(raw)
@@ -189,42 +187,51 @@ class PlanAndExecuteRouter:
             return "execute"
         return "synthesize"
 
-    def _execute_step_node(self, state: PlanExecState) -> dict:
-        """Execute the current plan step using a ReAct sub-agent."""
-        idx = state["step_index"]
-        step = state["plan"][idx]
-        step_desc = f'{step["action"]}: {step["detail"]}'
-        logger.info("Executing step %d/%d: %s", idx + 1, len(state["plan"]), step_desc)
+    def _make_execute_step_node(self, store: ToolResultStore):
+        """Create an execute_step node closure bound to a request-scoped store.
 
-        # Build a fresh tool set and sub-agent for this step
-        tools = make_retrieval_tools(
-            self._hybrid_retriever,
-            self._reranker,
-            self._vector_store,
-            self._store,
-            self._default_top_k,
-            llm_chain=self._llm,
-        )
-        sub_agent = create_react_agent(self._llm, tools)
+        Args:
+            store: ToolResultStore for this specific request.
 
-        step_prompt = (
-            f'Step to execute: {step_desc}\n\n'
-            f'Original user question (for context): {state["query"]}'
-        )
+        Returns:
+            Node function for LangGraph.
+        """
 
-        result = sub_agent.invoke({
-            "messages": [
-                SystemMessage(content=_EXECUTOR_SYSTEM),
-                HumanMessage(content=step_prompt),
-            ]
-        })
+        def _execute_step_node(state: PlanExecState) -> dict:
+            idx = state["step_index"]
+            step = state["plan"][idx]
+            step_desc = f'{step["action"]}: {step["detail"]}'
+            logger.info("Executing step %d/%d: %s", idx + 1, len(state["plan"]), step_desc)
 
-        # Extract the sub-agent's final text answer
-        answer = _extract_last_ai_text(result.get("messages", []))
-        logger.info("Step %d result: %s", idx + 1, answer[:200])
+            tools = make_retrieval_tools(
+                self._hybrid_retriever,
+                self._reranker,
+                self._vector_store,
+                store,
+                self._default_top_k,
+                llm_chain=self._llm,
+            )
+            sub_agent = create_react_agent(self._llm, tools)
 
-        new_results = list(state["step_results"]) + [(step_desc, answer)]
-        return {"step_index": idx + 1, "step_results": new_results}
+            step_prompt = (
+                f'Step to execute: {step_desc}\n\n'
+                f'Original user question (for context): {state["query"]}'
+            )
+
+            result = sub_agent.invoke({
+                "messages": [
+                    SystemMessage(content=_EXECUTOR_SYSTEM),
+                    HumanMessage(content=step_prompt),
+                ]
+            })
+
+            answer = _extract_last_ai_text(result.get("messages", []))
+            logger.info("Step %d result: %s", idx + 1, answer[:200])
+
+            new_results = list(state["step_results"]) + [(step_desc, answer)]
+            return {"step_index": idx + 1, "step_results": new_results}
+
+        return _execute_step_node
 
     def _synthesize_node(self, state: PlanExecState) -> dict:
         """Synthesize a final answer from all step results."""
@@ -247,8 +254,7 @@ class PlanAndExecuteRouter:
             f"Research results:\n{gathered}\n\n"
             f"Answer:"
         )
-        result = self._llm.invoke(prompt)
-        answer = _strip_think(result.content if hasattr(result, "content") else str(result))
+        answer = _extract_content(self._llm.invoke(prompt))
         logger.info("Synthesized final answer (%d chars)", len(answer))
         return {"answer": answer}
 
@@ -256,8 +262,11 @@ class PlanAndExecuteRouter:
     # Graph construction
     # ------------------------------------------------------------------
 
-    def _build_graph(self) -> object:
+    def _build_graph(self, store: ToolResultStore) -> object:
         """Build the Plan-and-Execute LangGraph.
+
+        Args:
+            store: Request-scoped ToolResultStore for this invocation.
 
         Returns:
             Compiled LangGraph.
@@ -265,7 +274,7 @@ class PlanAndExecuteRouter:
         graph: StateGraph = StateGraph(PlanExecState)
 
         graph.add_node("plan", self._plan_node)
-        graph.add_node("execute_step", self._execute_step_node)
+        graph.add_node("execute_step", self._make_execute_step_node(store))
         graph.add_node("synthesize", self._synthesize_node)
 
         graph.set_entry_point("plan")
@@ -284,7 +293,7 @@ class PlanAndExecuteRouter:
         return graph.compile()
 
     # ------------------------------------------------------------------
-    # Public interface (mirrors QueryRouter / ReActRouter)
+    # Public interface (mirrors QueryRouter)
     # ------------------------------------------------------------------
 
     def route(self, query: str, top_k: int) -> GenerationResponse:
@@ -298,7 +307,7 @@ class PlanAndExecuteRouter:
             GenerationResponse with answer, sources, intent, and confidence.
         """
         logger.info("PlanExec routing query: %s", query)
-        self._store = ToolResultStore()
+        store = ToolResultStore()
 
         initial_state = PlanExecState(
             query=query,
@@ -309,16 +318,16 @@ class PlanAndExecuteRouter:
             answer="",
         )
 
-        graph = self._build_graph()
+        graph = self._build_graph(store)
         final_state: PlanExecState = graph.invoke(initial_state)
 
-        sources = self._store.retrieved[:top_k]
+        sources = store.retrieved[:top_k]
         confidence = max((r.score for r in sources), default=0.0)
 
         plan_step_strs = [
             f'{s["action"]}: {s["detail"]}' for s in final_state.get("plan", [])
         ]
-        tool_call_strs = [f"{name}: {arg}" for name, arg in self._store.tool_calls]
+        tool_call_strs = [f"{name}: {arg}" for name, arg in store.tool_calls]
 
         response = GenerationResponse(
             answer=final_state["answer"],
@@ -328,11 +337,11 @@ class PlanAndExecuteRouter:
             pipeline_details=PipelineDetails(
                 original_query=query,
                 retrieval_query=", ".join(
-                    q for name, q in self._store.tool_calls if name == "hybrid_search"
+                    q for name, q in store.tool_calls if name == "hybrid_search"
                 ) or query,
-                dense_results=self._store.dense_results,
-                sparse_results=self._store.sparse_results,
-                fused_results=self._store.fused_results,
+                dense_results=store.dense_results,
+                sparse_results=store.sparse_results,
+                fused_results=store.fused_results,
                 reranked_results=sources,
                 plan_steps=plan_step_strs,
                 tool_calls=tool_call_strs,
@@ -359,7 +368,7 @@ class PlanAndExecuteRouter:
         Yields:
             Step event dicts.
         """
-        self._store = ToolResultStore()
+        store = ToolResultStore()
 
         initial_state = PlanExecState(
             query=query,
@@ -370,7 +379,7 @@ class PlanAndExecuteRouter:
             answer="",
         )
 
-        graph = self._build_graph()
+        graph = self._build_graph(store)
         accumulated: dict = dict(initial_state)
 
         for chunk in graph.stream(initial_state, stream_mode="updates"):
@@ -400,7 +409,7 @@ class PlanAndExecuteRouter:
                 elif node_name == "synthesize":
                     yield {"step": "synthesize"}
 
-        sources = self._store.retrieved[:top_k]
+        sources = store.retrieved[:top_k]
         confidence = max((r.score for r in sources), default=0.0)
         answer = accumulated.get("answer", "")
 
@@ -416,19 +425,19 @@ class PlanAndExecuteRouter:
                 "pipeline_details": {
                     "original_query": query,
                     "retrieval_query": ", ".join(
-                        q for name, q in self._store.tool_calls if name == "hybrid_search"
+                        q for name, q in store.tool_calls if name == "hybrid_search"
                     ) or query,
                     "detected_language": "",
                     "translated": False,
-                    "dense_results": [r.to_dict(include_text=False) for r in self._store.dense_results],
-                    "sparse_results": [r.to_dict(include_text=False) for r in self._store.sparse_results],
-                    "fused_results": [r.to_dict(include_text=False) for r in self._store.fused_results],
+                    "dense_results": [r.to_dict(include_text=False) for r in store.dense_results],
+                    "sparse_results": [r.to_dict(include_text=False) for r in store.sparse_results],
+                    "fused_results": [r.to_dict(include_text=False) for r in store.fused_results],
                     "reranked_results": [r.to_dict(include_text=False) for r in sources],
                     "plan_steps": [
                         f'{s["action"]}: {s["detail"]}'
                         for s in accumulated.get("plan", [])
                     ],
-                    "tool_calls": [f"{n}: {a}" for n, a in self._store.tool_calls],
+                    "tool_calls": [f"{n}: {a}" for n, a in store.tool_calls],
                 },
             },
         }
@@ -441,18 +450,37 @@ class PlanAndExecuteRouter:
 _THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
 
 
-def _strip_think(text: str) -> str:
-    """Remove ``<think>...</think>`` reasoning blocks from LLM output.
+def _extract_content(result: object) -> str:
+    """Extract plain text from an LLM invoke result.
 
-    Some models (e.g. Qwen3) emit chain-of-thought wrapped in ``<think>``
-    tags.  This helper strips them so only the user-facing answer remains.
+    Handles:
+    - AIMessage with ``content: str``
+    - AIMessage with ``content: list[str | dict]`` (some providers)
+    - Plain strings (e.g. from StrOutputParser or test mocks)
 
     Args:
-        text: Raw LLM output.
+        result: Return value of ``llm.invoke()`` or ``chain.invoke()``.
 
     Returns:
-        Cleaned text with think blocks removed.
+        Cleaned text with ``<think>`` blocks removed.
     """
+    if hasattr(result, "content"):
+        content = result.content
+    else:
+        content = result
+
+    if isinstance(content, list):
+        # content can be list[str | dict]; extract text from each block
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and "text" in block:
+                parts.append(block["text"])
+        text = "\n".join(parts)
+    else:
+        text = str(content)
+
     return _THINK_RE.sub("", text).strip()
 
 
@@ -523,5 +551,5 @@ def _extract_last_ai_text(messages: list) -> str:
             and msg.content
             and not getattr(msg, "tool_calls", None)
         ):
-            return _strip_think(str(msg.content))
+            return _extract_content(msg)
     return ""
