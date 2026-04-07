@@ -32,7 +32,8 @@ class BaseChunker:
         self.chunk_overlap = chunk_overlap
 
     def chunk(
-        self, text: str, document_id: str, metadata: dict[str, str | int]
+        self, text: str, document_id: str, metadata: dict[str, str | int],
+        start_index: int = 0,
     ) -> list[DocumentChunk]:
         """Split text into chunks.
 
@@ -40,6 +41,7 @@ class BaseChunker:
             text: The full text to chunk.
             document_id: Identifier of the source document.
             metadata: Metadata to attach to each chunk.
+            start_index: Starting chunk index for globally unique IDs.
 
         Returns:
             List of DocumentChunk objects.
@@ -51,7 +53,8 @@ class FixedSizeChunker(BaseChunker):
     """Splits text into fixed-size character chunks with overlap."""
 
     def chunk(
-        self, text: str, document_id: str, metadata: dict[str, str | int]
+        self, text: str, document_id: str, metadata: dict[str, str | int],
+        start_index: int = 0,
     ) -> list[DocumentChunk]:
         """Split text into fixed-size chunks using LangChain CharacterTextSplitter.
 
@@ -59,6 +62,7 @@ class FixedSizeChunker(BaseChunker):
             text: The full text to chunk.
             document_id: Identifier of the source document.
             metadata: Metadata to attach to each chunk.
+            start_index: Starting chunk index for globally unique IDs.
 
         Returns:
             List of DocumentChunk with strategy=FIXED_SIZE.
@@ -73,13 +77,13 @@ class FixedSizeChunker(BaseChunker):
         texts = splitter.split_text(text)
         chunks = [
             DocumentChunk(
-                chunk_id=_make_chunk_id(document_id, index),
+                chunk_id=_make_chunk_id(document_id, start_index + i),
                 document_id=document_id,
                 text=chunk_text,
-                metadata={**metadata, "chunk_index": index},
+                metadata={**metadata, "chunk_index": start_index + i},
                 strategy=ChunkStrategy.FIXED_SIZE,
             )
-            for index, chunk_text in enumerate(texts)
+            for i, chunk_text in enumerate(texts)
         ]
         logger.debug("FixedSizeChunker produced %d chunks for %s", len(chunks), document_id)
         return chunks
@@ -89,7 +93,8 @@ class RecursiveChunker(BaseChunker):
     """Recursively splits text using LangChain's RecursiveCharacterTextSplitter."""
 
     def chunk(
-        self, text: str, document_id: str, metadata: dict[str, str | int]
+        self, text: str, document_id: str, metadata: dict[str, str | int],
+        start_index: int = 0,
     ) -> list[DocumentChunk]:
         """Split text using recursive character splitting.
 
@@ -97,6 +102,7 @@ class RecursiveChunker(BaseChunker):
             text: The full text to chunk.
             document_id: Identifier of the source document.
             metadata: Metadata to attach to each chunk.
+            start_index: Starting chunk index for globally unique IDs.
 
         Returns:
             List of DocumentChunk with strategy=RECURSIVE.
@@ -107,12 +113,12 @@ class RecursiveChunker(BaseChunker):
         )
         texts = splitter.split_text(text)
         chunks: list[DocumentChunk] = []
-        for index, chunk_text in enumerate(texts):
+        for i, chunk_text in enumerate(texts):
             chunks.append(DocumentChunk(
-                chunk_id=_make_chunk_id(document_id, index),
+                chunk_id=_make_chunk_id(document_id, start_index + i),
                 document_id=document_id,
                 text=chunk_text,
-                metadata={**metadata, "chunk_index": index},
+                metadata={**metadata, "chunk_index": start_index + i},
                 strategy=ChunkStrategy.RECURSIVE,
             ))
         logger.debug("RecursiveChunker produced %d chunks for %s", len(chunks), document_id)
@@ -136,7 +142,8 @@ class SemanticChunker(BaseChunker):
         self._embeddings = embeddings
 
     def chunk(
-        self, text: str, document_id: str, metadata: dict[str, str | int]
+        self, text: str, document_id: str, metadata: dict[str, str | int],
+        start_index: int = 0,
     ) -> list[DocumentChunk]:
         """Split text at semantic boundaries.
 
@@ -144,6 +151,7 @@ class SemanticChunker(BaseChunker):
             text: The full text to chunk.
             document_id: Identifier of the source document.
             metadata: Metadata to attach to each chunk.
+            start_index: Starting chunk index for globally unique IDs.
 
         Returns:
             List of DocumentChunk with strategy=SEMANTIC.
@@ -151,12 +159,12 @@ class SemanticChunker(BaseChunker):
         splitter = LCSemanticChunker(embeddings=self._embeddings)
         docs = splitter.create_documents([text])
         chunks: list[DocumentChunk] = []
-        for index, doc in enumerate(docs):
+        for i, doc in enumerate(docs):
             chunks.append(DocumentChunk(
-                chunk_id=_make_chunk_id(document_id, index),
+                chunk_id=_make_chunk_id(document_id, start_index + i),
                 document_id=document_id,
                 text=doc.page_content,
-                metadata={**metadata, "chunk_index": index},
+                metadata={**metadata, "chunk_index": start_index + i},
                 strategy=ChunkStrategy.SEMANTIC,
             ))
         logger.debug("SemanticChunker produced %d chunks for %s", len(chunks), document_id)

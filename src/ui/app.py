@@ -4,6 +4,7 @@ Calls the FastAPI backend at http://localhost:8000.
 Single-page document search interface with clean sans-serif design.
 """
 
+import html
 import json
 import os
 import random
@@ -721,10 +722,35 @@ if search_clicked and question.strip():
 
                     elif _step == "tool_result":
                         _rc = _event.get("result_count", 0)
+                        _tool_name = _event.get("tool", "")
+                        if _tool_name == "list_documents":
+                            # list_documents returns doc list in its text,
+                            # parse count from the tool output or show generic
+                            st.write(
+                                "Dokumentliste hentet"
+                                if lang == "da"
+                                else "Document list retrieved"
+                            )
+                        elif _tool_name == "fetch_document":
+                            st.write(
+                                (f"Hentet dokument (**{_rc}** afsnit)")
+                                if lang == "da"
+                                else (f"Fetched document (**{_rc}** chunks)")
+                            )
+                        else:
+                            st.write(
+                                (f"Fandt **{_rc}** relevante passager")
+                                if lang == "da"
+                                else (f"Found **{_rc}** relevant passages")
+                            )
+
+                    elif _step == "broaden_query":
+                        _retry = _event.get("retry_count", 1)
+                        _rq = _event.get("retrieval_query", "")
                         st.write(
-                            (f"Hentet **{_rc}** dokumenter")
+                            (f"Lav konfidensgrad – forsøg {_retry} med udvidet søgning: _{_rq}_")
                             if lang == "da"
-                            else (f"Retrieved **{_rc}** documents")
+                            else (f"Low confidence – retry {_retry} with broadened query: _{_rq}_")
                         )
 
                     elif _step == "generate":
@@ -783,7 +809,7 @@ if search_clicked and question.strip():
 
     # -- Answer --
     answer = data.get("answer", t["no_answer"])
-    st.markdown(f'<div class="answer-block">{answer}</div>', unsafe_allow_html=True)
+    st.markdown(answer)
 
     # -- Sources --
     sources = data.get("sources", [])
@@ -795,17 +821,17 @@ if search_clicked and question.strip():
                 score = src.get("score", 0.0)
                 retrieval_source = src.get("source", "")
                 metadata = src.get("metadata", {})
-                page = metadata.get("page", "") if isinstance(metadata, dict) else ""
+                page = metadata.get("page_number", "") if isinstance(metadata, dict) else ""
 
                 page_info = f' &middot; {t["page_label"]} {page}' if page else ""
                 score_display = f"{score:.3f}"
 
                 st.markdown(
                     f'<div class="source-card">'
-                    f'<div class="source-card-title">{doc_name}{page_info}</div>'
-                    f'<div class="source-card-text">{text[:500]}</div>'
+                    f'<div class="source-card-title">{html.escape(doc_name)}{page_info}</div>'
+                    f'<div class="source-card-text">{html.escape(text[:500])}</div>'
                     f'<div class="source-card-meta">'
-                    f"Score: {score_display} &nbsp;&middot;&nbsp; {retrieval_source}"
+                    f"Score: {score_display} &nbsp;&middot;&nbsp; {html.escape(retrieval_source)}"
                     f"</div>"
                     f"</div>",
                     unsafe_allow_html=True,
@@ -844,48 +870,62 @@ if search_clicked and question.strip():
                 )
                 st.markdown(f"{header}\n{rows}")
 
-            # 2) BM25 results
-            _render_result_table(pd.get("sparse_results", []), t["pipeline_bm25"])
+            _has_retrieval = bool(
+                pd.get("dense_results") or pd.get("sparse_results") or pd.get("fused_results")
+            )
 
-            st.markdown("---")
+            if _has_retrieval:
+                # 2) BM25 results
+                _render_result_table(pd.get("sparse_results", []), t["pipeline_bm25"])
 
-            # 3) Vector search results
-            _render_result_table(pd.get("dense_results", []), t["pipeline_dense"])
+                st.markdown("---")
 
-            st.markdown("---")
+                # 3) Vector search results
+                _render_result_table(pd.get("dense_results", []), t["pipeline_dense"])
 
-            # 4) RRF fused ranking
-            _render_result_table(pd.get("fused_results", []), t["pipeline_fused"])
+                st.markdown("---")
 
-            st.markdown("---")
+                # 4) RRF fused ranking
+                _render_result_table(pd.get("fused_results", []), t["pipeline_fused"])
 
-            # 5) Reranked results with score change
+                st.markdown("---")
+
+            # 5) Reranked / fetched results
             reranked = pd.get("reranked_results", [])
             st.markdown(f'**{t["pipeline_reranked"]}**')
             if reranked:
-                # Build a map from chunk_id -> fused score for comparison
-                fused_scores: dict[str, float] = {
-                    r.get("chunk_id", ""): r.get("score", 0.0)
-                    for r in pd.get("fused_results", [])
-                }
-                header = (
-                    f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | '
-                    f'{t["pipeline_score"]} | {t["pipeline_score_change"]} |\n'
-                    f"|---|---|---|---|"
-                )
-                rows_list = []
-                for i, r in enumerate(reranked):
-                    cid = r.get("chunk_id", "")
-                    new_score = r.get("score", 0.0)
-                    old_score = fused_scores.get(cid)
-                    if old_score is not None:
-                        change = f"RRF {old_score:.4f} -> {new_score:.4f}"
-                    else:
-                        change = "-"
-                    rows_list.append(
-                        f'| {i + 1} | {_truncate_doc(r.get("document_id", ""))} | {new_score:.4f} | {change} |'
+                if _has_retrieval:
+                    # Show score change from RRF → reranking
+                    fused_scores: dict[str, float] = {
+                        r.get("chunk_id", ""): r.get("score", 0.0)
+                        for r in pd.get("fused_results", [])
+                    }
+                    header = (
+                        f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | '
+                        f'{t["pipeline_score"]} | {t["pipeline_score_change"]} |\n'
+                        f"|---|---|---|---|"
                     )
-                st.markdown(f"{header}\n" + "\n".join(rows_list))
+                    rows_list = []
+                    for i, r in enumerate(reranked):
+                        cid = r.get("chunk_id", "")
+                        new_score = r.get("score", 0.0)
+                        old_score = fused_scores.get(cid)
+                        if old_score is not None:
+                            change = f"RRF {old_score:.4f} -> {new_score:.4f}"
+                        else:
+                            change = "-"
+                        rows_list.append(
+                            f'| {i + 1} | {_truncate_doc(r.get("document_id", ""))} | {new_score:.4f} | {change} |'
+                        )
+                    st.markdown(f"{header}\n" + "\n".join(rows_list))
+                else:
+                    # No hybrid search was used (e.g. fetch_document only) — simple table
+                    header = f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | {t["pipeline_score"]} |\n|---|---|---|'
+                    rows = "\n".join(
+                        f'| {i + 1} | {_truncate_doc(r.get("document_id", ""))} | {r.get("score", 0):.4f} |'
+                        for i, r in enumerate(reranked)
+                    )
+                    st.markdown(f"{header}\n{rows}")
             else:
                 st.caption(t["pipeline_no_results"])
 

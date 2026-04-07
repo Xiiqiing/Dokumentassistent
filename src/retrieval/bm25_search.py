@@ -45,7 +45,8 @@ class BM25Search:
         tokenized_query = self._tokenize(query)
         scores = self._index.get_scores(tokenized_query)
 
-        ranked_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_k]
+        positive_indices = [i for i in range(len(scores)) if scores[i] > 0.0]
+        ranked_indices = sorted(positive_indices, key=lambda i: scores[i], reverse=True)[:top_k]
 
         results = [
             QueryResult(
@@ -54,7 +55,6 @@ class BM25Search:
                 source="bm25",
             )
             for i in ranked_indices
-            if scores[i] > 0.0
         ]
         logger.debug("BM25 search returned %d results for query: %s", len(results), query)
         return results

@@ -1,5 +1,6 @@
 """Qdrant vector store for dense retrieval."""
 
+import hashlib
 import json
 import logging
 
@@ -77,7 +78,7 @@ class VectorStore:
 
         points = [
             PointStruct(
-                id=idx,
+                id=int(hashlib.sha256(chunk.chunk_id.encode()).hexdigest()[:15], 16),
                 vector=embedding,
                 payload={
                     "chunk_id": chunk.chunk_id,
@@ -87,7 +88,7 @@ class VectorStore:
                     "strategy": chunk.strategy.value,
                 },
             )
-            for idx, (chunk, embedding) in enumerate(zip(chunks, embeddings))
+            for chunk, embedding in zip(chunks, embeddings)
         ]
 
         self._client.upsert(collection_name=self._collection_name, points=points)

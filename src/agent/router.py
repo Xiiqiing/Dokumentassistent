@@ -11,7 +11,6 @@ explicit and testable without hand-rolled flags or callback plumbing.
 """
 
 import logging
-import unicodedata
 from collections.abc import Generator
 from typing import TypedDict
 
@@ -123,53 +122,8 @@ class QueryRouter:
         self._translate_query_enabled = translate_query
         self._graph = self._build_graph()
 
-    @staticmethod
-    def _detect_script(text: str) -> str | None:
-        """Detect language from Unicode script for non-Latin text.
-
-        Returns a language name (e.g. "Chinese") if the script is
-        unambiguously identifiable, or None to fall back to LLM detection.
-        """
-        script_counts: dict[str, int] = {}
-        for ch in text:
-            if ch.isspace() or ch in ".,!?;:\"'()[]{}":
-                continue
-            try:
-                name = unicodedata.name(ch, "")
-            except ValueError:
-                continue
-            if name.startswith("CJK") or name.startswith("KANGXI"):
-                script_counts["CJK"] = script_counts.get("CJK", 0) + 1
-            elif name.startswith("HIRAGANA") or name.startswith("KATAKANA"):
-                script_counts["Japanese"] = script_counts.get("Japanese", 0) + 1
-            elif name.startswith("HANGUL"):
-                script_counts["Korean"] = script_counts.get("Korean", 0) + 1
-            elif name.startswith("ARABIC"):
-                script_counts["Arabic"] = script_counts.get("Arabic", 0) + 1
-            elif name.startswith("DEVANAGARI"):
-                script_counts["Hindi"] = script_counts.get("Hindi", 0) + 1
-            elif name.startswith("THAI"):
-                script_counts["Thai"] = script_counts.get("Thai", 0) + 1
-            elif name.startswith("CYRILLIC"):
-                script_counts["Russian"] = script_counts.get("Russian", 0) + 1
-
-        if not script_counts:
-            return None
-
-        dominant = max(script_counts, key=lambda k: script_counts[k])
-        # CJK characters alone -> Chinese; if mixed with Hiragana/Katakana -> Japanese
-        if dominant == "CJK" and "Japanese" in script_counts:
-            return "Japanese"
-        if dominant == "CJK":
-            return "Chinese"
-        return dominant
-
     def _detect_language_and_intent(self, query: str) -> tuple[str, IntentType]:
         """Detect the query language and classify intent in a single LLM call.
-
-        Uses Unicode script detection first for non-Latin scripts.  For
-        Latin-script text, a single LLM call returns both language and intent,
-        saving one full round-trip compared to two separate calls.
 
         Args:
             query: The user's original query.
@@ -177,22 +131,11 @@ class QueryRouter:
         Returns:
             Tuple of (detected_language, intent).
         """
-        # Fast path: detect non-Latin scripts via Unicode
-        script_language = self._detect_script(query)
-
-        if script_language is not None:
-            # Language is known; still need intent from LLM
-            intent = self._intent_classifier.classify(query)
-            logger.info("Detected query language: %s", script_language)
-            logger.info("Classified intent: %s", intent.value)
-            return script_language, intent
-
-        # Latin-script text — combine language detection + intent classification
         valid_intents = "factual, summary, comparison, procedural, unknown"
         prompt = (
             "You are given a user query. Do TWO things:\n"
             "1. Detect the language of the query (reply with the language name in English, "
-            "e.g. 'Danish', 'English', 'German').\n"
+            "e.g. 'Danish', 'English', 'German', 'Chinese', 'Japanese').\n"
             "2. Classify the intent into exactly one of: "
             f"{valid_intents}.\n\n"
             "Reply with EXACTLY two lines, nothing else:\n"

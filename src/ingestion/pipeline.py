@@ -77,6 +77,7 @@ class IngestionPipeline:
 
         pages = self.parser.parse(file_path)
         all_chunks: list[DocumentChunk] = []
+        chunk_offset = 0
 
         for page in pages:
             raw_text = str(page["text"])
@@ -88,8 +89,9 @@ class IngestionPipeline:
                 "source": str(page["source"]),
                 "page_number": int(page["page_number"]),
             }
-            chunks = self.chunker.chunk(cleaned, document_id, metadata)
+            chunks = self.chunker.chunk(cleaned, document_id, metadata, start_index=chunk_offset)
             all_chunks.extend(chunks)
+            chunk_offset += len(chunks)
 
         logger.info("Ingested %d chunks from %s", len(all_chunks), file_path)
         return all_chunks

@@ -161,8 +161,8 @@ def make_retrieval_tools(
                 f"(Document not found. Use list_documents to see available IDs.)"
             )
 
-        # Sort chunks by chunk_id to preserve document order
-        chunks.sort(key=lambda c: c.chunk_id)
+        # Sort chunks by chunk_index to preserve document order
+        chunks.sort(key=lambda c: c.metadata.get("chunk_index", 0))
 
         # Register chunks as QueryResult so confidence and sources are surfaced in the UI.
         # Score 1.0 indicates a direct full-document fetch (no ranking involved).

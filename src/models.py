@@ -56,21 +56,22 @@ class QueryResult:
     score: float
     source: str
 
-    def to_dict(self, *, include_text: bool = True) -> dict[str, str | float]:
+    def to_dict(self, *, include_text: bool = True) -> dict:
         """Serialise to a JSON-safe dictionary.
 
         Args:
             include_text: Whether to include the chunk text (default True).
 
         Returns:
-            Dictionary with chunk_id, document_id, score, source, and
-            optionally text.
+            Dictionary with chunk_id, document_id, score, source, metadata,
+            and optionally text.
         """
-        d: dict[str, str | float] = {
+        d: dict = {
             "chunk_id": self.chunk.chunk_id,
             "document_id": self.chunk.document_id,
             "score": self.score,
             "source": self.source,
+            "metadata": self.chunk.metadata,
         }
         if include_text:
             d["text"] = self.chunk.text

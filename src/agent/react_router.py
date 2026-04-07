@@ -145,7 +145,7 @@ class ReActRouter:
             confidence=confidence,
             pipeline_details=PipelineDetails(
                 original_query=query,
-                retrieval_query=", ".join(q for _, q in store.tool_calls) or query,
+                retrieval_query=", ".join(q for name, q in store.tool_calls if name == "hybrid_search") or query,
                 dense_results=store.dense_results,
                 sparse_results=store.sparse_results,
                 fused_results=store.fused_results,
@@ -175,6 +175,7 @@ class ReActRouter:
         graph = self._make_graph(store)
 
         all_messages: list = []
+        prev_retrieved_count = 0
 
         for chunk in graph.stream(
             {
@@ -194,20 +195,30 @@ class ReActRouter:
                 for msg in node_messages:
                     if isinstance(msg, AIMessage):
                         for tc in getattr(msg, "tool_calls", []):
+                            tc_args = tc.get("args", {})
+                            # Extract the most relevant argument for display
+                            tc_detail = (
+                                tc_args.get("query", "")
+                                or tc_args.get("document_id", "")
+                            )
                             yield {
                                 "step": "tool_call",
                                 "tool": tc.get("name", ""),
-                                "query": tc.get("args", {}).get("query", ""),
+                                "query": tc_detail,
                             }
                         if msg.content and not getattr(msg, "tool_calls", None):
                             yield {"step": "generate"}
 
                     elif isinstance(msg, ToolMessage):
+                        tool_name = getattr(msg, "name", "")
+                        current_count = len(store.retrieved)
                         yield {
                             "step": "tool_result",
-                            "tool": getattr(msg, "name", ""),
-                            "result_count": len(store.retrieved),
+                            "tool": tool_name,
+                            "result_count": current_count - prev_retrieved_count,
+                            "total_count": current_count,
                         }
+                        prev_retrieved_count = current_count
 
         answer = self._extract_answer(all_messages)
         sources = store.retrieved[:top_k]
@@ -222,8 +233,8 @@ class ReActRouter:
                 "confidence": confidence,
                 "pipeline_details": {
                     "original_query": query,
-                    "retrieval_query": ", ".join(q for _, q in store.tool_calls) or query,
-                    "detected_language": "unknown",
+                    "retrieval_query": ", ".join(q for name, q in store.tool_calls if name == "hybrid_search") or query,
+                    "detected_language": "",
                     "translated": False,
                     "dense_results": [r.to_dict(include_text=False) for r in store.dense_results],
                     "sparse_results": [r.to_dict(include_text=False) for r in store.sparse_results],

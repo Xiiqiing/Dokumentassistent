@@ -90,11 +90,22 @@ class PipelineDetailsResponse(BaseModel):
     reranked_results: list[PipelineResultItem] = []
 
 
+class SourceItem(BaseModel):
+    """A single source item in the query response."""
+
+    chunk_id: str
+    document_id: str
+    score: float
+    source: str
+    text: str = ""
+    metadata: dict[str, str | int] = {}
+
+
 class QueryResponse(BaseModel):
     """Response body for the query endpoint."""
 
     answer: str
-    sources: list[dict[str, str | float]]
+    sources: list[SourceItem]
     intent: str
     confidence: float
     pipeline_details: PipelineDetailsResponse = PipelineDetailsResponse()
