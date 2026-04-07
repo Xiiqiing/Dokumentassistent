@@ -436,12 +436,12 @@ st.markdown(
     [data-testid="stRadio"] [role="radiogroup"] label:has(input:checked) p {
         color: #901A1E !important;
     }
-    /* Separator between the two options (added via CSS pseudo-element) */
-    [data-testid="stRadio"] [role="radiogroup"] label:last-child::before {
+    /* Separator between the two options */
+    [data-testid="stRadio"] [role="radiogroup"] label:first-child::after {
         content: "|";
         color: #CCCCCC;
         font-weight: 400;
-        margin: 0 0.45rem;
+        margin-left: 0.5rem;
         font-size: 0.92rem;
     }
 
