@@ -15,6 +15,7 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from src.agent.router import QueryRouter
     from src.agent.react_router import ReActRouter
+    from src.agent.plan_and_execute import PlanAndExecuteRouter
     from src.config import Settings
     from src.ingestion.pipeline import IngestionPipeline
     from src.retrieval.bm25_search import BM25Search
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_query_router: "QueryRouter | ReActRouter | None" = None
+_query_router: "QueryRouter | ReActRouter | PlanAndExecuteRouter | None" = None
 _ingestion_pipeline: "IngestionPipeline | None" = None
 _embedder: "Embedder | None" = None
 _vector_store: "VectorStore | None" = None
@@ -34,7 +35,7 @@ _settings: "Settings | None" = None
 
 
 def set_dependencies(
-    query_router: "QueryRouter | ReActRouter",
+    query_router: "QueryRouter | ReActRouter | PlanAndExecuteRouter",
     ingestion_pipeline: "IngestionPipeline",
     embedder: "Embedder",
     vector_store: "VectorStore",
@@ -75,6 +76,7 @@ class PipelineResultItem(BaseModel):
     chunk_id: str
     score: float
     source: str
+    metadata: dict[str, str | int] = {}
 
 
 class PipelineDetailsResponse(BaseModel):
@@ -88,6 +90,8 @@ class PipelineDetailsResponse(BaseModel):
     sparse_results: list[PipelineResultItem] = []
     fused_results: list[PipelineResultItem] = []
     reranked_results: list[PipelineResultItem] = []
+    plan_steps: list[str] = []
+    tool_calls: list[str] = []
 
 
 class SourceItem(BaseModel):
@@ -206,6 +210,8 @@ async def query_documents(request: QueryRequest) -> QueryResponse:
         sparse_results=[PipelineResultItem(**r.to_dict(include_text=False)) for r in pd.sparse_results],
         fused_results=[PipelineResultItem(**r.to_dict(include_text=False)) for r in pd.fused_results],
         reranked_results=[PipelineResultItem(**r.to_dict(include_text=False)) for r in pd.reranked_results],
+        plan_steps=pd.plan_steps,
+        tool_calls=pd.tool_calls,
     )
 
     return QueryResponse(

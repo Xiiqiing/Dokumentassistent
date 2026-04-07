@@ -91,6 +91,8 @@ class PipelineDetails:
         sparse_results: Results from sparse (BM25) retrieval.
         fused_results: Results after reciprocal rank fusion.
         reranked_results: Results after cross-encoder reranking.
+        plan_steps: Ordered descriptions of planned steps (Plan-and-Execute mode).
+        tool_calls: Log of tool invocations as "tool_name: argument" strings.
     """
 
     original_query: str = ""
@@ -101,6 +103,8 @@ class PipelineDetails:
     sparse_results: list[QueryResult] = field(default_factory=list)
     fused_results: list[QueryResult] = field(default_factory=list)
     reranked_results: list[QueryResult] = field(default_factory=list)
+    plan_steps: list[str] = field(default_factory=list)
+    tool_calls: list[str] = field(default_factory=list)
 
 
 @dataclass

@@ -26,14 +26,22 @@ logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = (
     "You are a helpful assistant for administrative staff at the University of Copenhagen (KU).\n\n"
-    "You have access to a hybrid_search tool that searches KU policy documents stored in the "
-    "knowledge base.\n\n"
+    "You have access to several tools for searching KU policy documents:\n"
+    "- hybrid_search: General-purpose search across all documents.\n"
+    "- multi_query_search: For complex or comparison questions — decomposes into sub-queries.\n"
+    "- search_within_document: Pinpoint specific sections inside a known document.\n"
+    "- summarize_document: Generate an overview of an entire document.\n"
+    "- list_documents: See which documents are available.\n"
+    "- fetch_document: Get the full text of a specific document.\n\n"
     "Guidelines:\n"
-    "- Always call hybrid_search before answering questions about KU rules, policies, exams, "
+    "- Always search before answering questions about KU rules, policies, exams, "
     "employment conditions, or administrative procedures.\n"
-    "- If the first search does not return sufficient information, call hybrid_search again "
-    "with a refined or more specific query.\n"
-    "- For comparison questions, search for each item separately.\n"
+    "- Use multi_query_search for comparison questions or complex multi-part questions.\n"
+    "- Use search_within_document when you already know the relevant document and "
+    "need to find a specific clause or section.\n"
+    "- Use summarize_document when the user asks for an overview of a document.\n"
+    "- If the first search does not return sufficient information, try a different "
+    "tool or refine your query.\n"
     "- Cite the document sources ([1], [2], …) in your answer.\n"
     "- Answer in the same language as the user's question."
 )
@@ -83,6 +91,7 @@ class ReActRouter:
             self._vector_store,
             store,
             self._default_top_k,
+            llm_chain=self._llm,
         )
         return create_react_agent(self._llm, tools)
 

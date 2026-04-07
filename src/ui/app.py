@@ -53,7 +53,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "- **LLM-integration** — provider-agnostisk, prompt-styret "
             "svargenerering\n"
             "- **Evaluering** — RAGAS-baseret kvalitetsmåling\n"
-            "- **Agent Flows** — ReAct-loop med værktøjskald.\n"
+            "- **Agent Flows** — LangGraph Plan-and-Execute med værktøjskald og samtalehukommelse\n"
             "- [**Kildedokumenter**](https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs)"
             " — de dokumenter systemet er indekseret fra"
         ),
@@ -67,8 +67,8 @@ TEXTS: dict[str, dict[str, str]] = {
             "Et dokumentintelligens-system bygget på en RAG-arkitektur, dækkende file-indlæsning, semantisk chunking, "
             "hybrid søgning med reranking "
             "og LLM-genererede svar med kildehenvisninger. LLM-laget er provider-agnostisk. "
-            "To tilstande: en LangGraph ReAct-agent (standard) til forespørgsler der kræver flere søgetrin, "
-            "og en pipeline til lette modeller uden værktøjskald. Søgekvaliteten evalueres med RAGAS."
+            "To tilstande: en LangGraph Plan-and-Execute-agent (standard) med samtalehukommelse til komplekse forespørgsler, "
+            "og en foruddefineret pipeline til lette modeller. Søgekvaliteten evalueres med RAGAS."
         ),
         "search_label": "Stil et spørgsmål om ... ",
         "search_placeholder": "F.eks.: Hvad er reglerne for behandling af personoplysninger?",
@@ -113,6 +113,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "pipeline_rank": "#",
         "pipeline_no_results": "Ingen resultater",
         "pipeline_score_change": "Score-ændring",
+        "pipeline_plan_steps": "Udførelsesplan",
+        "pipeline_tool_calls": "Værktøjskald",
     },
     "en": {
         "page_title": "Document Assistant",
@@ -131,7 +133,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "- **LLM integration** — provider-agnostic, prompt-driven "
             "answer generation\n"
             "- **Evaluation** — RAGAS-based quality measurement\n"
-            "- **Agent Flows** — ReAct loop with tool calling\n"
+            "- **Agent Flows** — LangGraph Plan-and-Execute with tool calling and conversation memory\n"
             "- [**Source documents**](https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs)"
             " — the documents indexed into the knowledge base"
         ),
@@ -145,8 +147,8 @@ TEXTS: dict[str, dict[str, str]] = {
             "A document intelligence system built on a RAG architecture, covering file ingestion, semantic chunking, "
             "hybrid retrieval with reranking, "
             "and LLM-generated answers with source citations. The LLM layer is provider-agnostic. "
-            "Two modes: a LangGraph ReAct agent (default) for queries that need multiple retrieval steps, "
-            "and a pipeline for lightweight models without tool-calling support. "
+            "Two modes: a LangGraph Plan-and-Execute agent (default) with conversation memory for complex multi-step queries, "
+            "and a predefined pipeline for lightweight models. "
             "Retrieval quality is evaluated with RAGAS."
         ),
         "search_label": "Ask a question ...",
@@ -192,6 +194,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "pipeline_rank": "#",
         "pipeline_no_results": "No results",
         "pipeline_score_change": "Score change",
+        "pipeline_plan_steps": "Execution Plan",
+        "pipeline_tool_calls": "Tool Calls",
     },
 }
 
@@ -711,6 +715,32 @@ if search_clicked and question.strip():
                             else (f"Reranked to **{_rc}** results · confidence **{_cf:.0%}**")
                         )
 
+                    elif _step == "plan":
+                        _steps = _event.get("steps", [])
+                        st.write(
+                            (f"Plan oprettet med **{len(_steps)}** trin")
+                            if lang == "da"
+                            else (f"Plan created with **{len(_steps)}** steps")
+                        )
+                        for _ps in _steps:
+                            st.write(f"  - {_ps}")
+
+                    elif _step == "execute_step":
+                        _si = _event.get("step_index", 0)
+                        _sd = _event.get("step_desc", "")
+                        st.write(
+                            (f"Trin {_si} udført: _{_sd}_")
+                            if lang == "da"
+                            else (f"Step {_si} executed: _{_sd}_")
+                        )
+
+                    elif _step == "synthesize":
+                        st.write(
+                            "Syntetiserer endeligt svar ..."
+                            if lang == "da"
+                            else "Synthesizing final answer ..."
+                        )
+
                     elif _step == "tool_call":
                         _tool_name = _event.get("tool", "")
                         _tool_query = _event.get("query", "")
@@ -850,6 +880,21 @@ if search_clicked and question.strip():
     pd = data.get("pipeline_details", {})
     if pd:
         with st.expander(t["pipeline_heading"], expanded=False):
+            # 0) Plan steps and tool calls (Plan-and-Execute mode)
+            plan_steps = pd.get("plan_steps", [])
+            if plan_steps:
+                st.markdown(f'**{t["pipeline_plan_steps"]}**')
+                for i, step in enumerate(plan_steps, 1):
+                    st.markdown(f"{i}. {step}")
+                st.markdown("---")
+
+            tool_calls = pd.get("tool_calls", [])
+            if tool_calls:
+                st.markdown(f'**{t["pipeline_tool_calls"]}**')
+                for tc in tool_calls:
+                    st.markdown(f"- `{tc}`")
+                st.markdown("---")
+
             # 1) Query translation (only show if translation actually happened)
             if pd.get("translated"):
                 st.markdown(f'**{t["pipeline_translation"]}**')

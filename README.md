@@ -12,7 +12,7 @@ noindex: true
 
 **Live Demo:** [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space) — hosted on Hugging Face Spaces
 
-A document intelligence system built on a RAG architecture, covering PDF ingestion, semantic chunking, hybrid retrieval with reranking, and LLM-generated answers with source citations. The LLM layer is provider-agnostic. Two modes: a pipeline for lightweight models, a LangGraph ReAct agent for queries that need multiple retrieval steps. Retrieval quality is evaluated with RAGAS.
+A document intelligence system built on a RAG architecture, covering PDF ingestion, semantic chunking, hybrid retrieval with reranking, and LLM-generated answers with source citations. The LLM layer is provider-agnostic. Two modes: a pipeline for lightweight models, and a Plan-and-Execute agent flow with conversation memory for complex multi-step queries. Retrieval quality is evaluated with RAGAS.
 
 ## How it works
 
@@ -22,13 +22,16 @@ At query time both indexes are searched and their results merged with reciprocal
 
 **Two routing modes, switchable via `AGENT_MODE`:**
 
-- **Pipeline** (default): a fixed LangGraph DAG — language detection → optional translation → hybrid retrieval → reranking → generation. Works with lightweight local models like `gemma4`.
+- **Pipeline**: a predefined LangGraph graph — language detection → optional translation → hybrid retrieval → reranking → generation, with a confidence-based retry loop. Works with lightweight local models.
 
-- **ReAct Agent** (`AGENT_MODE=react`): replaces the DAG with a reasoning loop where the LLM calls tools as many times as it needs before answering. Useful for multi-hop questions or comparisons across documents. Requires a model with tool-calling support.
+- **Plan-and-Execute Agent** (default, `AGENT_MODE=react`): a structured multi-step pipeline where a planner decomposes the query into steps, an executor runs each step via a ReAct sub-agent with tool access, and a synthesizer produces the final cited answer. Includes conversation memory for multi-turn follow-ups. Requires a model with tool-calling support.
 
   | Tool | Purpose |
   |------|---------|
-  | `hybrid_search(query, top_k)` | Retrieve relevant passages |
+  | `hybrid_search(query, top_k)` | Retrieve relevant passages via hybrid search + reranking |
+  | `multi_query_search(question, top_k)` | Decompose complex questions into sub-queries, search each, merge results |
+  | `search_within_document(document_id, query, top_k)` | Find specific sections inside a known document |
+  | `summarize_document(document_id)` | Generate a structured summary of a document |
   | `list_documents()` | See what's in the knowledge base |
   | `fetch_document(document_id)` | Read a full document |
 
@@ -57,12 +60,12 @@ See `.env.example` for per-provider configuration.
 
 | Mode | `AGENT_MODE` | Notes |
 |------|-------------|-------|
-| Pipeline | `pipeline` (default) | Fixed DAG, works with `gemma4` |
-| ReAct | `react` | Tool-calling loop, needs a model that supports tool use |
+| Pipeline | `pipeline` | Predefined graph, works with lightweight models |
+| Plan-and-Execute (default) | `react` | Structured multi-step agent with conversation memory |
 
-Tool-calling is supported by OpenAI, Anthropic, Google GenAI, Azure OpenAI, Groq, and some Ollama models (`llama3.1`, `qwen2.5`, `mistral-nemo`). The default `gemma4` does not support it — use `pipeline` mode with Ollama.
+Tool-calling is supported by OpenAI, Anthropic, Google GenAI, Azure OpenAI, Groq, and some Ollama models (`llama3.1`, `qwen2.5`, `mistral-nemo`).
 
-ReAct with OpenAI:
+Plan-and-Execute with OpenAI:
 
 ```dotenv
 AGENT_MODE=react
@@ -76,7 +79,7 @@ Pipeline with local Ollama:
 ```dotenv
 AGENT_MODE=pipeline
 LLM_PROVIDER=ollama
-OLLAMA_MODEL=gemma4
+OLLAMA_MODEL=gemma3
 ```
 
 ## Quick Start
@@ -149,8 +152,10 @@ src/
   agent/
     intent_classifier.py
     router.py              # pipeline mode (AGENT_MODE=pipeline)
-    tools.py               # hybrid_search + ToolResultStore
-    react_router.py        # ReAct mode (AGENT_MODE=react)
+    tools.py               # 6 retrieval tools + ToolResultStore
+    react_router.py        # legacy ReAct loop (superseded by plan_and_execute)
+    plan_and_execute.py    # Plan-and-Execute agent (AGENT_MODE=react)
+    memory.py              # conversation memory for multi-turn
   evaluation/
     evaluator.py           # RAGAS metrics
   ui/

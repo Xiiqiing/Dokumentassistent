@@ -16,7 +16,8 @@ from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
 from src.agent.intent_classifier import IntentClassifier
 from src.agent.router import QueryRouter
-from src.agent.react_router import ReActRouter
+from src.agent.plan_and_execute import PlanAndExecuteRouter
+from src.agent.memory import ConversationMemory
 from src.ingestion.pipeline import IngestionPipeline
 from src.api.routes import router, set_dependencies
 
@@ -72,13 +73,14 @@ def create_app() -> FastAPI:
     reranker = Reranker(model=create_reranker(settings.reranker_model))
 
     if settings.agent_mode == "react":
-        logger.info("Agent mode: ReAct (tool-calling loop)")
-        query_router: QueryRouter | ReActRouter = ReActRouter(
+        logger.info("Agent mode: Plan-and-Execute (structured multi-step agent)")
+        query_router: QueryRouter | PlanAndExecuteRouter = PlanAndExecuteRouter(
             llm=llm,
             hybrid_retriever=hybrid_retriever,
             reranker=reranker,
             vector_store=vector_store,
             default_top_k=settings.top_k,
+            memory=ConversationMemory(),
         )
     else:
         logger.info("Agent mode: pipeline (fixed DAG)")

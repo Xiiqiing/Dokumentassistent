@@ -4,7 +4,7 @@
 
 [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space) — hosted on Hugging Face Spaces
 
-A document intelligence system covering PDF ingestion, semantic chunking, hybrid retrieval with reranking, and LLM-generated answers with source citations. The LLM layer is provider-agnostic. Two modes: a LangGraph ReAct agent (default) for queries that need multiple retrieval steps, and a pipeline for lightweight models without tool-calling support. Retrieval quality is evaluated with RAGAS.
+A document intelligence system covering PDF ingestion, semantic chunking, hybrid retrieval with reranking, and LLM-generated answers with source citations. The LLM layer is provider-agnostic. Two modes: a Plan-and-Execute agent (default) with conversation memory for complex multi-step queries, and a pipeline for lightweight models without tool-calling support. Retrieval quality is evaluated with RAGAS.
 
 ## How it works
 
@@ -14,15 +14,18 @@ At query time both indexes are searched and their results merged with reciprocal
 
 **Two routing modes, switchable via `AGENT_MODE`:**
 
-- **ReAct Agent** (default): a reasoning loop where the LLM calls tools as many times as it needs before answering. Useful for multi-hop questions or comparisons across documents. Requires a model with tool-calling support.
+- **Plan-and-Execute Agent** (default): a structured multi-step pipeline — a planner decomposes the query into steps, an executor runs each step via a ReAct sub-agent with tool access, and a synthesizer produces the final cited answer. Includes conversation memory for multi-turn follow-ups. Requires a model with tool-calling support.
 
   | Tool | Purpose |
   |------|---------|
-  | `hybrid_search(query, top_k)` | Retrieve relevant passages |
+  | `hybrid_search(query, top_k)` | Retrieve relevant passages via hybrid search + reranking |
+  | `multi_query_search(question, top_k)` | Decompose complex questions into sub-queries, search each, merge results |
+  | `search_within_document(document_id, query, top_k)` | Find specific sections inside a known document |
+  | `summarize_document(document_id)` | Generate a structured summary of a document |
   | `list_documents()` | See what's in the knowledge base |
   | `fetch_document(document_id)` | Read a full document |
 
-- **Pipeline** (`AGENT_MODE=pipeline`): a fixed LangGraph graph — language detection → optional translation → hybrid retrieval → reranking → generation. Works with lightweight local models that lack tool-calling support.
+- **Pipeline** (`AGENT_MODE=pipeline`): a predefined LangGraph graph — language detection → optional translation → hybrid retrieval → reranking → generation, with a confidence-based retry loop. Works with lightweight local models that lack tool-calling support.
 
 ## Tech Stack
 
@@ -49,12 +52,12 @@ See `.env.example` for per-provider configuration.
 
 | Mode | `AGENT_MODE` | Notes |
 |------|-------------|-------|
-| ReAct | `react` (default) | Tool-calling loop, needs a model that supports tool use |
-| Pipeline | `pipeline` | Fixed graph, works with lightweight models that lack tool calling |
+| Plan-and-Execute | `react` (default) | Structured multi-step agent with conversation memory |
+| Pipeline | `pipeline` | Predefined graph, works with lightweight models that lack tool calling |
 
 Tool-calling is supported by OpenAI, Anthropic, Google GenAI, Azure OpenAI, Groq, and some Ollama models (`gemma4`, `llama3.1`, `qwen2.5`, `mistral-nemo`).
 
-ReAct with local Ollama (default):
+Plan-and-Execute with local Ollama (default):
 
 ```dotenv
 AGENT_MODE=react
@@ -70,7 +73,7 @@ LLM_PROVIDER=ollama
 OLLAMA_MODEL=gemma3
 ```
 
-ReAct with OpenAI:
+Plan-and-Execute with OpenAI:
 
 ```dotenv
 AGENT_MODE=react
@@ -149,8 +152,10 @@ src/
   agent/
     intent_classifier.py
     router.py              # pipeline mode (AGENT_MODE=pipeline)
-    tools.py               # hybrid_search + ToolResultStore
-    react_router.py        # ReAct mode (AGENT_MODE=react)
+    tools.py               # 6 retrieval tools + ToolResultStore
+    react_router.py        # legacy ReAct loop (superseded by plan_and_execute)
+    plan_and_execute.py    # Plan-and-Execute agent (AGENT_MODE=react)
+    memory.py              # conversation memory for multi-turn
   evaluation/
     evaluator.py           # RAGAS metrics
   ui/
