@@ -714,11 +714,18 @@ if search_clicked and question.strip():
                     elif _step == "tool_call":
                         _tool_name = _event.get("tool", "")
                         _tool_query = _event.get("query", "")
-                        st.write(
-                            (f"Værktøj **{_tool_name}** kaldt: _{_tool_query}_")
-                            if lang == "da"
-                            else (f"Tool **{_tool_name}** called: _{_tool_query}_")
-                        )
+                        if _tool_query:
+                            st.write(
+                                (f"Værktøj **{_tool_name}** kaldt: _{_tool_query}_")
+                                if lang == "da"
+                                else (f"Tool **{_tool_name}** called: _{_tool_query}_")
+                            )
+                        else:
+                            st.write(
+                                (f"Værktøj **{_tool_name}** kaldt")
+                                if lang == "da"
+                                else (f"Tool **{_tool_name}** called")
+                            )
 
                     elif _step == "tool_result":
                         _rc = _event.get("result_count", 0)
