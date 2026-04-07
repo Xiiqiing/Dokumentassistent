@@ -387,6 +387,50 @@ st.markdown(
         border-radius: 0 !important;
     }
 
+    /* ---------- Language toggle ---------- */
+    .lang-toggle-wrap [data-testid="stRadio"] > div {
+        flex-direction: row !important;
+        gap: 0 !important;
+        justify-content: flex-end;
+    }
+    .lang-toggle-wrap [data-testid="stRadio"] > label {
+        display: none !important;
+    }
+    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] {
+        gap: 0 !important;
+        justify-content: flex-end;
+    }
+    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label {
+        background-color: #F0F0F0;
+        color: #555555;
+        padding: 0.3rem 0.9rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid #CCCCCC;
+        margin: 0;
+        transition: background-color 0.15s, color 0.15s;
+    }
+    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label:first-child {
+        border-right: none;
+    }
+    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label:last-child {
+        border-left: none;
+    }
+    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label[data-checked="true"],
+    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label:has(input:checked) {
+        background-color: #901A1E;
+        color: #FFFFFF;
+        border-color: #901A1E;
+    }
+    /* Hide the radio dot */
+    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
+        pointer-events: none;
+    }
+    .lang-toggle-wrap [data-testid="stRadio"] input[type="radio"] {
+        display: none !important;
+    }
+
     /* ---------- Expander ---------- */
     .streamlit-expanderHeader {
         font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
@@ -448,17 +492,21 @@ st.markdown(
 )
 
 # ---------------------------------------------------------------------------
-# Language selector  --  top-right corner via columns
+# Language selector  --  right-aligned toggle styled in KU red
 # ---------------------------------------------------------------------------
-_col_spacer, _col_lang = st.columns([5, 1])
+_col_spacer, _col_lang = st.columns([4, 1])
 with _col_lang:
-    lang = st.selectbox(
-        "🌐",
-        options=["da", "en"],
-        format_func=lambda c: "Dansk" if c == "da" else "English",
-        index=0,
-        label_visibility="collapsed",
-    )
+    with st.container():
+        st.markdown('<div class="lang-toggle-wrap">', unsafe_allow_html=True)
+        lang = st.radio(
+            "Language",
+            options=["da", "en"],
+            format_func=lambda c: "Dansk" if c == "da" else "English",
+            index=0,
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
 
 t = TEXTS[lang]
 
