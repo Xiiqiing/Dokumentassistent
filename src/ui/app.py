@@ -41,7 +41,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "sidebar_heading": "Om systemet",
         "sidebar_body": (
             "- **Python + FastAPI** REST-backend\n"
-            "- **Ustruktureret data** — PDF-parsing, preprocessing, "
+            "- **Ustruktureret data** — File-parsing, preprocessing, "
             "tre chunking-strategier\n"
             "- **Embedding-modeller** — flersproget semantisk "
             "vektorrepræsentation\n"
@@ -63,7 +63,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "title": "Dokumentassistent",
         "title_badge": "Demo",
         "subtitle": (
-            "Et dokumentintelligens-system bygget på en RAG-arkitektur, dækkende PDF-indlæsning, semantisk chunking, "
+            "Et dokumentintelligens-system bygget på en RAG-arkitektur, dækkende file-indlæsning, semantisk chunking, "
             "hybrid søgning med reranking "
             "og LLM-genererede svar med kildehenvisninger. LLM-laget er provider-agnostisk. "
             "To tilstande: en LangGraph ReAct-agent (standard) til forespørgsler der kræver flere søgetrin, "
@@ -119,7 +119,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "sidebar_heading": "About the system",
         "sidebar_body": (
             "- **Python + FastAPI** REST backend\n"
-            "- **Unstructured data** — PDF parsing, preprocessing, "
+            "- **Unstructured data** — File parsing, preprocessing, "
             "three chunking strategies\n"
             "- **Embedding models** — multilingual semantic vector "
             "representations\n"
@@ -141,7 +141,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "title": "Document Assistant",
         "title_badge": "Demo",
         "subtitle": (
-            "A document intelligence system built on a RAG architecture, covering PDF ingestion, semantic chunking, "
+            "A document intelligence system built on a RAG architecture, covering file ingestion, semantic chunking, "
             "hybrid retrieval with reranking, "
             "and LLM-generated answers with source citations. The LLM layer is provider-agnostic. "
             "Two modes: a LangGraph ReAct agent (default) for queries that need multiple retrieval steps, "

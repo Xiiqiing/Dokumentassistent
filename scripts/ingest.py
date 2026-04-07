@@ -64,7 +64,7 @@ def main() -> None:
     strategy_value = args.strategy or "recursive"
     strategy = ChunkStrategy(strategy_value)
 
-    logger.info("=== KU Doc Assistant — Ingestion ===")
+    logger.info("=== Doc Assistant — Ingestion ===")
     logger.info("Docs directory : %s", docs_dir)
     logger.info("Chunk strategy : %s", strategy.value)
     logger.info("Chunk size     : %d", settings.chunk_size)

@@ -159,5 +159,5 @@ scripts/
   ingest.py
   e2e_test.py
 tests/
-docs/                      # example PDFs (KU AI public documents)
+docs/                      # example PDFs/texts (KU AI public documents)
 ```
