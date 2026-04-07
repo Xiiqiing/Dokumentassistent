@@ -21,12 +21,14 @@ SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2'); \
 CrossEncoder('cross-encoder/mmarco-mMiniLMv2-L12-H384-v1')"
 
 # ---------- Build-time ingestion: import docs into Qdrant local ---------------
+# HF_HUB_OFFLINE=1 forces use of the cached models downloaded above,
+# avoiding HuggingFace API calls that trigger 429 on shared IPs.
 ENV QDRANT_PATH=/app/qdrant_data \
     QDRANT_URL="" \
     EMBEDDING_PROVIDER=local \
     LLM_PROVIDER=google_genai \
     API_BASE_URL=http://localhost:8000
-RUN python -m scripts.ingest
+RUN HF_HUB_OFFLINE=1 python -m scripts.ingest
 
 # ---------- Nginx config: port 7860 reverse proxy ----------------------------
 RUN rm /etc/nginx/sites-enabled/default
