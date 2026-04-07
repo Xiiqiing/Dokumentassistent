@@ -1,5 +1,5 @@
 ---
-title: Dokumentassistent
+title: Dokumentintelligens-system
 emoji: 📄
 colorFrom: red
 colorTo: gray

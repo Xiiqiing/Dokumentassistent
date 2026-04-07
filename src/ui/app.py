@@ -1,4 +1,4 @@
-"""Streamlit frontend for Dokumentassistent.
+"""Streamlit frontend for Dokumentintelligens-system.
 
 Calls the FastAPI backend at http://localhost:8000.
 Single-page document search interface with clean sans-serif design.
@@ -37,7 +37,7 @@ EXAMPLE_QUESTIONS: list[str] = [
 # ---------------------------------------------------------------------------
 TEXTS: dict[str, dict[str, str]] = {
     "da": {
-        "page_title": "Dokumentassistent",
+        "page_title": "Dokumentintelligens-system",
         "lang_label": "Sprog",
         "sidebar_heading": "Om systemet",
         "sidebar_body": (
@@ -61,8 +61,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "chunking_help": "Vælg hvordan dokumenterne opdeles i tekststykker.",
         "topk_label": "Antal kilder (top_k)",
         "topk_help": "Antal dokumentfragmenter der hentes fra søgeindekset.",
-        "title": "Dokumentassistent",
-        "title_badge": "Demo",
+        "title": "Dokumentintelligens-system",
+        "title_badge": "",
         "subtitle": (
             "Et dokumentintelligens-system bygget på en RAG-arkitektur, dækkende file-indlæsning, semantisk chunking, "
             "hybrid søgning med reranking "
@@ -117,7 +117,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "pipeline_tool_calls": "Værktøjskald",
     },
     "en": {
-        "page_title": "Document Assistant",
+        "page_title": "Document Intelligence System",
         "lang_label": "Language",
         "sidebar_heading": "About the system",
         "sidebar_body": (
@@ -141,8 +141,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "chunking_help": "Choose how documents are split into text chunks.",
         "topk_label": "Number of sources (top_k)",
         "topk_help": "Number of document fragments retrieved from the search index.",
-        "title": "Document Assistant",
-        "title_badge": "Demo",
+        "title": "Document Intelligence System",
+        "title_badge": "",
         "subtitle": (
             "A document intelligence system built on a RAG architecture, covering file ingestion, semantic chunking, "
             "hybrid retrieval with reranking, "
@@ -203,7 +203,7 @@ TEXTS: dict[str, dict[str, str]] = {
 # Page config
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Dokumentassistent",
+    page_title="Dokumentintelligens-system",
     page_icon="📄",
     layout="centered",
 )
@@ -213,10 +213,12 @@ st.markdown('<meta name="robots" content="noindex, nofollow">', unsafe_allow_htm
 # ---------------------------------------------------------------------------
 # Analytics — Umami Cloud
 # ---------------------------------------------------------------------------
-st.markdown(
+import streamlit.components.v1 as components
+components.html(
     '<script async src="https://cloud.umami.is/script.js"'
     ' data-website-id="cf6c908e-1236-4406-8c02-88aa7c9a0db2"></script>',
-    unsafe_allow_html=True,
+    height=0,
+    width=0,
 )
 
 # ---------------------------------------------------------------------------
@@ -608,13 +610,7 @@ st.markdown('<div class="accent-line"></div>', unsafe_allow_html=True)
 
 # Title block
 st.markdown(
-    f'<div class="app-title">'
-    f'{t["title"]}'
-    f'<span style="font-size:1rem; font-weight:500; color:#FFFFFF; '
-    f'background:#901A1E; padding:0.15rem 0.55rem; margin-left:0.6rem; '
-    f'vertical-align:middle; letter-spacing:0.05em;">'
-    f'{t["title_badge"]}</span>'
-    f'</div>',
+    f'<div class="app-title">{t["title"]}</div>',
     unsafe_allow_html=True,
 )
 # Subtitle placeholder — filled after we know whether search was clicked
