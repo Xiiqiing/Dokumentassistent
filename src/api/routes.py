@@ -265,7 +265,34 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
     """
     event_queue: queue.Queue = queue.Queue()
 
+    class _RateLimitLogHandler(logging.Handler):
+        """Temporary handler that detects SDK-internal 429 retries via logs."""
+
+        _PATTERNS = ("429", "retrying request", "too many requests", "rate limit")
+
+        def emit(self, record: logging.LogRecord) -> None:
+            msg = record.getMessage().lower()
+            if any(p in msg for p in self._PATTERNS):
+                retry_sec = ""
+                # Extract wait time from "Retrying request … in 5.000000 seconds"
+                if "retrying" in msg and "seconds" in msg:
+                    for part in msg.split():
+                        try:
+                            retry_sec = f" ({float(part):.0f}s)"
+                            break
+                        except ValueError:
+                            continue
+                event_queue.put({
+                    "step": "rate_limit",
+                    "message": f"API rate limit — retrying{retry_sec}",
+                })
+
     def _run() -> None:
+        handler = _RateLimitLogHandler()
+        handler.setLevel(logging.INFO)
+        # Attach to root logger to catch openai/httpx/httpcore messages
+        root_logger = logging.getLogger()
+        root_logger.addHandler(handler)
         try:
             for event in _query_router.route_stream(
                 query=request.question, top_k=request.top_k
@@ -278,6 +305,7 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
             else:
                 event_queue.put({"step": "error", "code": 500, "message": exc_str})
         finally:
+            root_logger.removeHandler(handler)
             event_queue.put(None)  # sentinel
 
     threading.Thread(target=_run, daemon=True).start()

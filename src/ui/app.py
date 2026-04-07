@@ -800,6 +800,14 @@ if search_clicked and question.strip():
                             else "Answer generated"
                         )
 
+                    elif _step == "rate_limit":
+                        _rl_msg = _event.get("message", "")
+                        st.warning(
+                            f"⏳ {_rl_msg} — vent venligst ..."
+                            if lang == "da"
+                            else f"⏳ {_rl_msg} — please wait ..."
+                        )
+
                     elif _step == "done":
                         data = _event.get("result", {})
                         _status.update(label=t["status_done"], state="complete", expanded=False)
