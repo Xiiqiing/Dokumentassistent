@@ -348,6 +348,11 @@ st.markdown(
         margin-bottom: 1.5rem;
     }
 
+    /* ---------- Search form container — equal padding on all sides ---------- */
+    [data-testid="stForm"] {
+        padding: 1.5rem !important;
+    }
+
     /* ---------- Inputs ---------- */
     .stTextInput {
         margin-bottom: -0.5rem !important;
