@@ -26,14 +26,29 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _is_rate_limit_error(exc_str: str) -> bool:
-    """Check whether an exception string indicates a rate-limit / quota error."""
-    lower = exc_str.lower()
+def _is_rate_limit_error(exc: str | Exception) -> bool:
+    """Check whether an exception indicates a rate-limit / quota error.
+
+    Walks the full cause chain so wrapped exceptions (e.g. LangGraph
+    wrapping an upstream 429) are still detected.
+    """
+    texts: list[str] = []
+    if isinstance(exc, Exception):
+        current: BaseException | None = exc
+        while current is not None:
+            texts.append(str(current))
+            texts.append(type(current).__name__)
+            current = current.__cause__
+    else:
+        texts.append(exc)
+
+    blob = " ".join(texts).lower()
     return (
-        "429" in exc_str
-        or "resource_exhausted" in lower
-        or "rate" in lower
-        or "too many requests" in lower
+        "429" in blob
+        or "resource_exhausted" in blob
+        or "rate limit" in blob
+        or "rate_limit" in blob
+        or "too many requests" in blob
     )
 
 
@@ -201,7 +216,7 @@ async def query_documents(request: QueryRequest) -> QueryResponse:
         response = _query_router.route(query=request.question, top_k=request.top_k)
     except Exception as exc:
         exc_str = str(exc)
-        if _is_rate_limit_error(exc_str):
+        if _is_rate_limit_error(exc):
             logger.warning("Rate limit / quota exhausted: %s", exc_str)
             raise HTTPException(
                 status_code=429,
@@ -258,7 +273,7 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
                 event_queue.put(event)
         except Exception as exc:
             exc_str = str(exc)
-            if _is_rate_limit_error(exc_str):
+            if _is_rate_limit_error(exc):
                 event_queue.put({"step": "error", "code": 429, "message": exc_str})
             else:
                 event_queue.put({"step": "error", "code": 500, "message": exc_str})

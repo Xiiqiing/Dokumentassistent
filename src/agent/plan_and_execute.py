@@ -41,6 +41,7 @@ _MAX_STEPS = 6
 # ------------------------------------------------------------------
 
 _PLANNER_PROMPT = (
+    "/no_think\n"
     "You are a planning assistant for the University of Copenhagen (KU) document system.\n\n"
     "Given a user question, produce a JSON list of 1–4 steps needed to answer it.\n"
     "Each step is an object with:\n"
@@ -51,8 +52,9 @@ _PLANNER_PROMPT = (
     "- For simple factual questions: 1 search step is enough.\n"
     "- For comparison questions: use multi_search or separate search steps.\n"
     "- For document overview requests: use summarize.\n"
+    "- For questions with multiple aspects: use 2–4 separate steps.\n"
     "- Always end with the steps needed; do NOT include a final 'answer' step.\n\n"
-    "Reply with ONLY the JSON array, nothing else.\n\n"
+    "Reply with ONLY the JSON array, nothing else. No explanation, no thinking.\n\n"
     "Examples:\n"
     'Question: "What is the exam policy?"\n'
     '[{"action": "search", "detail": "KU eksamensregler"}]\n\n'
@@ -61,6 +63,10 @@ _PLANNER_PROMPT = (
     '{"action": "search", "detail": "ferieregler administrativt personale"}]\n\n'
     'Question: "Summarize the AI policy document"\n'
     '[{"action": "summarize", "detail": "ku_ai_policy.pdf"}]\n\n'
+    'Question: "Which documents are about AI? Summarize and find the rules for written exams"\n'
+    '[{"action": "list_docs", "detail": "list all available documents"}, '
+    '{"action": "search", "detail": "AI dokumenter KU"}, '
+    '{"action": "search", "detail": "regler skriftlige opgaver eksamen GAI"}]\n\n'
     "Now plan for this question:\n"
 )
 
@@ -447,7 +453,19 @@ class PlanAndExecuteRouter:
 # Helpers
 # ------------------------------------------------------------------
 
-_THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+_THINK_CLOSED_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+_THINK_UNCLOSED_RE = re.compile(r"<think>.*", re.DOTALL)
+
+
+def _strip_think(text: str) -> str:
+    """Remove ``<think>`` blocks — both closed and unclosed.
+
+    Some models (Qwen3) always emit ``<think>...</think>``; others may
+    leave the tag unclosed.  This handles both cases.
+    """
+    text = _THINK_CLOSED_RE.sub("", text)
+    text = _THINK_UNCLOSED_RE.sub("", text)
+    return text.strip()
 
 
 def _extract_content(result: object) -> str:
@@ -470,7 +488,6 @@ def _extract_content(result: object) -> str:
         content = result
 
     if isinstance(content, list):
-        # content can be list[str | dict]; extract text from each block
         parts: list[str] = []
         for block in content:
             if isinstance(block, str):
@@ -481,7 +498,7 @@ def _extract_content(result: object) -> str:
     else:
         text = str(content)
 
-    return _THINK_RE.sub("", text).strip()
+    return _strip_think(text)
 
 
 def _parse_plan(raw: str) -> list[PlanStep]:

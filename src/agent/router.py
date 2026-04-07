@@ -25,7 +25,15 @@ from src.retrieval.reranker import Reranker
 
 logger = logging.getLogger(__name__)
 
-_THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+_THINK_CLOSED_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+_THINK_UNCLOSED_RE = re.compile(r"<think>.*", re.DOTALL)
+
+
+def _strip_think(text: str) -> str:
+    """Remove ``<think>`` blocks — both closed and unclosed."""
+    text = _THINK_CLOSED_RE.sub("", text)
+    text = _THINK_UNCLOSED_RE.sub("", text)
+    return text.strip()
 
 
 def _extract_content(result: object) -> str:
@@ -49,7 +57,7 @@ def _extract_content(result: object) -> str:
     else:
         text = str(content)
 
-    return _THINK_RE.sub("", text).strip()
+    return _strip_think(text)
 
 
 # Reranker confidence below this triggers a query-broadening retry.

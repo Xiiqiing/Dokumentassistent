@@ -14,19 +14,21 @@ from src.retrieval.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
 
-_THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+_THINK_CLOSED_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+_THINK_UNCLOSED_RE = re.compile(r"<think>.*", re.DOTALL)
+
+
+def _strip_think(text: str) -> str:
+    """Remove ``<think>`` blocks — both closed and unclosed."""
+    text = _THINK_CLOSED_RE.sub("", text)
+    text = _THINK_UNCLOSED_RE.sub("", text)
+    return text.strip()
 
 
 def _extract_content(result: object) -> str:
     """Extract plain text from an LLM invoke result.
 
     Handles AIMessage (content: str or list), plain strings, etc.
-
-    Args:
-        result: Return value of ``llm.invoke()`` or ``chain.invoke()``.
-
-    Returns:
-        Cleaned text with ``<think>`` blocks removed.
     """
     if hasattr(result, "content"):
         content = result.content
@@ -44,7 +46,7 @@ def _extract_content(result: object) -> str:
     else:
         text = str(content)
 
-    return _THINK_RE.sub("", text).strip()
+    return _strip_think(text)
 
 
 @dataclass

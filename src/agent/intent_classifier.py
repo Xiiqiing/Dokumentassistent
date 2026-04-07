@@ -11,7 +11,8 @@ from src.models import IntentType
 
 logger = logging.getLogger(__name__)
 
-_THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+_THINK_CLOSED_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+_THINK_UNCLOSED_RE = re.compile(r"<think>.*", re.DOTALL)
 
 _VALID_INTENTS = {intent.value for intent in IntentType}
 
@@ -58,7 +59,8 @@ class IntentClassifier:
         Returns:
             The classified IntentType.
         """
-        raw = _THINK_RE.sub("", self._chain.invoke({"query": query})).strip().lower()
+        _raw_out = self._chain.invoke({"query": query})
+        raw = _THINK_UNCLOSED_RE.sub("", _THINK_CLOSED_RE.sub("", _raw_out)).strip().lower()
         logger.debug("Raw classification result: %s", raw)
 
         if raw in _VALID_INTENTS:
