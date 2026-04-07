@@ -274,6 +274,23 @@ st.markdown(
         background-color: #FAFAFA;
         border-right: 1px solid #E0E0E0;
     }
+    /* Sidebar collapse button: always visible & KU red */
+    button[data-testid="stBaseButton-headerNoPadding"] {
+        opacity: 1 !important;
+        visibility: visible !important;
+        color: #901A1E !important;
+    }
+    button[data-testid="stBaseButton-headerNoPadding"] svg {
+        stroke: #901A1E !important;
+        color: #901A1E !important;
+    }
+    button[data-testid="stBaseButton-headerNoPadding"]:hover {
+        color: #6B1315 !important;
+    }
+    button[data-testid="stBaseButton-headerNoPadding"]:hover svg {
+        stroke: #6B1315 !important;
+        color: #6B1315 !important;
+    }
     section[data-testid="stSidebar"] > div:first-child {
         padding-top: 1rem;
         padding-left: 1.2rem;
@@ -473,7 +490,7 @@ st.markdown(
         bottom: 0;
         left: 0;
         right: 0;
-        z-index: 999;
+        z-index: 1000001;
         background-color: #FFFFFF;
         text-align: center;
         border-top: 1px solid #E0E0E0;
