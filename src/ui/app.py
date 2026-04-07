@@ -441,7 +441,7 @@ st.markdown(
         content: "|";
         color: #CCCCCC;
         font-weight: 400;
-        margin-right: 0.35rem;
+        margin: 0 0.45rem;
         font-size: 0.92rem;
     }
 
