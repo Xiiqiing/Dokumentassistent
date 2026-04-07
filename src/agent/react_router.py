@@ -10,6 +10,7 @@ AGENT_MODE=react in .env to activate; falls back to QueryRouter otherwise.
 """
 
 import logging
+import re
 from collections.abc import Generator
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
@@ -23,6 +24,14 @@ from src.retrieval.reranker import Reranker
 from src.retrieval.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
+
+_THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+
+
+def _strip_think(text: str) -> str:
+    """Remove ``<think>...</think>`` reasoning blocks from LLM output."""
+    return _THINK_RE.sub("", text).strip()
+
 
 _SYSTEM_PROMPT = (
     "You are a helpful assistant for administrative staff at the University of Copenhagen (KU).\n\n"
@@ -104,7 +113,7 @@ class ReActRouter:
                 and msg.content
                 and not getattr(msg, "tool_calls", None)
             ):
-                return str(msg.content)
+                return _strip_think(str(msg.content))
         return ""
 
     # ------------------------------------------------------------------

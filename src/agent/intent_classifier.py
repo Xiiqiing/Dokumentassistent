@@ -1,6 +1,7 @@
 """Intent classification for incoming user queries."""
 
 import logging
+import re
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
@@ -9,6 +10,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from src.models import IntentType
 
 logger = logging.getLogger(__name__)
+
+_THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
 
 _VALID_INTENTS = {intent.value for intent in IntentType}
 
@@ -55,7 +58,7 @@ class IntentClassifier:
         Returns:
             The classified IntentType.
         """
-        raw = self._chain.invoke({"query": query}).strip().lower()
+        raw = _THINK_RE.sub("", self._chain.invoke({"query": query})).strip().lower()
         logger.debug("Raw classification result: %s", raw)
 
         if raw in _VALID_INTENTS:

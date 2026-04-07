@@ -1,6 +1,7 @@
 """LangChain tools for the ReAct agent."""
 
 import logging
+import re
 from dataclasses import dataclass, field
 
 from langchain_core.runnables import Runnable
@@ -12,6 +13,20 @@ from src.retrieval.reranker import Reranker
 from src.retrieval.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
+
+_THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+
+
+def _strip_think(text: str) -> str:
+    """Remove ``<think>...</think>`` reasoning blocks from LLM output.
+
+    Args:
+        text: Raw LLM output.
+
+    Returns:
+        Cleaned text with think blocks removed.
+    """
+    return _THINK_RE.sub("", text).strip()
 
 
 @dataclass
@@ -287,7 +302,8 @@ def make_retrieval_tools(
                 "Reply with ONLY the queries, one per line, nothing else.\n\n"
                 f"Question: {question}"
             )
-            raw = str(llm_chain.invoke(decompose_prompt)).strip()
+            _result = llm_chain.invoke(decompose_prompt)
+            raw = _strip_think(_result.content if hasattr(_result, "content") else str(_result))
             sub_queries = [q.strip().lstrip("0123456789.-) ") for q in raw.splitlines() if q.strip()]
             if not sub_queries:
                 sub_queries = [question]
@@ -367,7 +383,8 @@ def make_retrieval_tools(
                 f"Document ID: {document_id}\n\n"
                 f"Document text:\n{full_text}"
             )
-            summary = str(llm_chain.invoke(summary_prompt)).strip()
+            _result = llm_chain.invoke(summary_prompt)
+            summary = _strip_think(_result.content if hasattr(_result, "content") else str(_result))
             return f"Resumé af {document_id}:\n\n{summary}"
 
         tools.extend([multi_query_search, summarize_document])

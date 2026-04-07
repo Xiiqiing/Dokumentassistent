@@ -16,6 +16,7 @@ allowing the executor to reason freely within each step.
 
 import json
 import logging
+import re
 from collections.abc import Generator
 from typing import TypedDict
 
@@ -173,7 +174,8 @@ class PlanAndExecuteRouter:
                 f"{history}\n\n"
             )
         prompt = _PLANNER_PROMPT + history_section + f'Question: "{state["query"]}"'
-        raw = str(self._llm.invoke(prompt)).strip()
+        result = self._llm.invoke(prompt)
+        raw = _strip_think(result.content if hasattr(result, "content") else str(result))
         logger.info("Planner raw output: %s", raw)
 
         plan = _parse_plan(raw)
@@ -245,7 +247,8 @@ class PlanAndExecuteRouter:
             f"Research results:\n{gathered}\n\n"
             f"Answer:"
         )
-        answer = str(self._llm.invoke(prompt)).strip()
+        result = self._llm.invoke(prompt)
+        answer = _strip_think(result.content if hasattr(result, "content") else str(result))
         logger.info("Synthesized final answer (%d chars)", len(answer))
         return {"answer": answer}
 
@@ -435,6 +438,24 @@ class PlanAndExecuteRouter:
 # Helpers
 # ------------------------------------------------------------------
 
+_THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+
+
+def _strip_think(text: str) -> str:
+    """Remove ``<think>...</think>`` reasoning blocks from LLM output.
+
+    Some models (e.g. Qwen3) emit chain-of-thought wrapped in ``<think>``
+    tags.  This helper strips them so only the user-facing answer remains.
+
+    Args:
+        text: Raw LLM output.
+
+    Returns:
+        Cleaned text with think blocks removed.
+    """
+    return _THINK_RE.sub("", text).strip()
+
+
 def _parse_plan(raw: str) -> list[PlanStep]:
     """Parse the planner's JSON output into a list of PlanStep dicts.
 
@@ -502,5 +523,5 @@ def _extract_last_ai_text(messages: list) -> str:
             and msg.content
             and not getattr(msg, "tool_calls", None)
         ):
-            return str(msg.content)
+            return _strip_think(str(msg.content))
     return ""

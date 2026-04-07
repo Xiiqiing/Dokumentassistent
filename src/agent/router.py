@@ -11,6 +11,7 @@ explicit and testable without hand-rolled flags or callback plumbing.
 """
 
 import logging
+import re
 from collections.abc import Generator
 from typing import TypedDict
 
@@ -23,6 +24,14 @@ from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
 
 logger = logging.getLogger(__name__)
+
+_THINK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
+
+
+def _strip_think(text: str) -> str:
+    """Remove ``<think>...</think>`` reasoning blocks from LLM output."""
+    return _THINK_RE.sub("", text).strip()
+
 
 # Reranker confidence below this triggers a query-broadening retry.
 # Cross-encoder sigmoid scores below 0.3 generally indicate poor relevance.
@@ -143,7 +152,7 @@ class QueryRouter:
             "intent: <intent>\n\n"
             f"Query: {query}"
         )
-        raw = str(self._llm_chain.invoke(prompt)).strip()
+        raw = _strip_think(str(self._llm_chain.invoke(prompt)))
         logger.debug("Combined detection raw response: %s", raw)
 
         # Parse response
@@ -188,7 +197,7 @@ class QueryRouter:
             "Reply with ONLY the translated text, nothing else.\n\n"
             f"Text: {query}"
         )
-        translated = str(self._llm_chain.invoke(translate_prompt)).strip()
+        translated = _strip_think(str(self._llm_chain.invoke(translate_prompt)))
         logger.info("Translated query to Danish: %s", translated)
         return translated
 
@@ -249,7 +258,7 @@ class QueryRouter:
             f"Original question: {state['query']}\n"
             f"Failed search query: {state['retrieval_query']}"
         )
-        broadened = str(self._llm_chain.invoke(prompt)).strip()
+        broadened = _strip_think(str(self._llm_chain.invoke(prompt)))
         logger.info(
             "Broadened query for retry %d: %s",
             state["retry_count"] + 1,
@@ -297,9 +306,9 @@ class QueryRouter:
         prompt = self._build_prompt(
             state["query"], state["intent"], context, state["user_language"]
         )
-        answer = self._llm_chain.invoke(prompt)
+        answer = _strip_think(str(self._llm_chain.invoke(prompt)))
         logger.info("Generated answer for intent=%s", state["intent"].value)
-        return {"answer": str(answer)}
+        return {"answer": answer}
 
     @staticmethod
     def _should_retrieve(state: RouterState) -> str:
