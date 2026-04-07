@@ -387,48 +387,62 @@ st.markdown(
         border-radius: 0 !important;
     }
 
-    /* ---------- Language toggle ---------- */
-    .lang-toggle-wrap [data-testid="stRadio"] > div {
-        flex-direction: row !important;
-        gap: 0 !important;
-        justify-content: flex-end;
+    /* ---------- Language toggle (the only st.radio on the page) ---------- */
+    /* Collapse vertical space around the toggle row */
+    [data-testid="stRadio"] {
+        margin: 0 !important;
+        padding: 0 !important;
     }
-    .lang-toggle-wrap [data-testid="stRadio"] > label {
+    [data-testid="stRadio"] [role="radiogroup"] label {
+        min-height: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    /* Reduce gap between language row and accent line */
+    [data-testid="stHorizontalBlock"]:first-child {
+        margin-bottom: -0.8rem !important;
+    }
+    /* Hide the "Language" label */
+    [data-testid="stRadio"] > label {
         display: none !important;
     }
-    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] {
-        gap: 0 !important;
+    [data-testid="stRadio"] [role="radiogroup"] {
+        gap: 0.15rem !important;
         justify-content: flex-end;
+        align-items: center;
     }
-    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label {
-        background-color: #F0F0F0;
-        color: #555555;
-        padding: 0.3rem 0.9rem;
-        font-size: 0.88rem;
-        font-weight: 600;
+    /* Hide the radio dot circle */
+    [data-testid="stRadio"] [role="radiogroup"] label > div:first-child {
+        display: none !important;
+    }
+    /* Base style for both options */
+    [data-testid="stRadio"] [role="radiogroup"] label {
+        background: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        min-height: 0 !important;
+    }
+    [data-testid="stRadio"] [role="radiogroup"] label p {
+        font-size: 0.92rem !important;
+        font-weight: 600 !important;
+        color: #999999 !important;
         cursor: pointer;
-        border: 1px solid #CCCCCC;
-        margin: 0;
-        transition: background-color 0.15s, color 0.15s;
+        transition: color 0.15s;
+        line-height: 1 !important;
     }
-    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label:first-child {
-        border-right: none;
+    /* Active / checked option → KU red */
+    [data-testid="stRadio"] [role="radiogroup"] label[data-checked="true"] p,
+    [data-testid="stRadio"] [role="radiogroup"] label:has(input:checked) p {
+        color: #901A1E !important;
     }
-    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label:last-child {
-        border-left: none;
-    }
-    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label[data-checked="true"],
-    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label:has(input:checked) {
-        background-color: #901A1E;
-        color: #FFFFFF;
-        border-color: #901A1E;
-    }
-    /* Hide the radio dot */
-    .lang-toggle-wrap [data-testid="stRadio"] [role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
-        pointer-events: none;
-    }
-    .lang-toggle-wrap [data-testid="stRadio"] input[type="radio"] {
-        display: none !important;
+    /* Separator between the two options (added via CSS pseudo-element) */
+    [data-testid="stRadio"] [role="radiogroup"] label:last-child::before {
+        content: "|";
+        color: #CCCCCC;
+        font-weight: 400;
+        margin-right: 0.35rem;
+        font-size: 0.92rem;
     }
 
     /* ---------- Expander ---------- */
@@ -494,19 +508,16 @@ st.markdown(
 # ---------------------------------------------------------------------------
 # Language selector  --  right-aligned toggle styled in KU red
 # ---------------------------------------------------------------------------
-_col_spacer, _col_lang = st.columns([4, 1])
+_col_spacer, _col_lang = st.columns([5, 1.5])
 with _col_lang:
-    with st.container():
-        st.markdown('<div class="lang-toggle-wrap">', unsafe_allow_html=True)
-        lang = st.radio(
-            "Language",
-            options=["da", "en"],
-            format_func=lambda c: "Dansk" if c == "da" else "English",
-            index=0,
-            horizontal=True,
-            label_visibility="collapsed",
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+    lang = st.radio(
+        "Language",
+        options=["da", "en"],
+        format_func=lambda c: "Dansk" if c == "da" else "English",
+        index=0,
+        horizontal=True,
+        label_visibility="collapsed",
+    )
 
 t = TEXTS[lang]
 
