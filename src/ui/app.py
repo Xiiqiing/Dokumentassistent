@@ -349,6 +349,9 @@ st.markdown(
     }
 
     /* ---------- Inputs ---------- */
+    .stTextInput {
+        margin-bottom: -0.5rem !important;
+    }
     .stTextInput > div > div > input {
         border-radius: 0 !important;
         border: 1px solid #999999 !important;
@@ -423,17 +426,19 @@ st.markdown(
         margin: 0 !important;
         min-height: 0 !important;
     }
-    [data-testid="stRadio"] [role="radiogroup"] label p {
+    [data-testid="stRadio"] [role="radiogroup"] label,
+    [data-testid="stRadio"] [role="radiogroup"] label * {
         font-size: 0.92rem !important;
         font-weight: 600 !important;
         color: #999999 !important;
         cursor: pointer;
-        transition: color 0.15s;
-        line-height: 1 !important;
+        line-height: 1.2 !important;
     }
     /* Active / checked option → KU red */
-    [data-testid="stRadio"] [role="radiogroup"] label[data-checked="true"] p,
-    [data-testid="stRadio"] [role="radiogroup"] label:has(input:checked) p {
+    [data-testid="stRadio"] [role="radiogroup"] label[data-checked="true"],
+    [data-testid="stRadio"] [role="radiogroup"] label[data-checked="true"] *,
+    [data-testid="stRadio"] [role="radiogroup"] label:has(input:checked),
+    [data-testid="stRadio"] [role="radiogroup"] label:has(input:checked) * {
         color: #901A1E !important;
     }
     /* Separator between the two options */
