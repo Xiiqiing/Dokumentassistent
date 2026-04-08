@@ -4,22 +4,22 @@ Calls the FastAPI backend at http://localhost:8000.
 Single-page document search interface with clean sans-serif design.
 """
 
+import datetime
 import html
 import json
 import os
 import random
 import uuid
 
+import extra_streamlit_components as stx
 import streamlit as st
 import requests
 
 API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000")
 
-# ---------------------------------------------------------------------------
-# Per-browser session ID (persisted via cookie, falls back to session_state)
-# ---------------------------------------------------------------------------
-if "session_id" not in st.session_state:
-    st.session_state["session_id"] = str(uuid.uuid4())
+# Cookie name used to persist the per-browser session ID across page reloads.
+_SESSION_COOKIE_NAME = "kuda_session_id"
+_SESSION_COOKIE_TTL_DAYS = 30
 
 # ---------------------------------------------------------------------------
 # Example questions — drawn from the documents in docs/
@@ -222,6 +222,45 @@ st.set_page_config(
 )
 
 st.markdown('<meta name="robots" content="noindex, nofollow">', unsafe_allow_html=True)
+
+# ---------------------------------------------------------------------------
+# Per-browser session ID — persisted in a cookie so chat history survives
+# page refreshes. Falls back to a freshly generated UUID if the cookie is
+# not yet readable (first visit, or before the JS component has initialised).
+# ---------------------------------------------------------------------------
+@st.cache_resource
+def _get_cookie_manager() -> stx.CookieManager:
+    """Return a singleton CookieManager (cached across reruns)."""
+    return stx.CookieManager(key="kuda_cookie_manager")
+
+
+_cookie_manager = _get_cookie_manager()
+_cookies = _cookie_manager.get_all()
+
+# CookieManager loads cookies asynchronously via a JS component. On the very
+# first script run after a page load, get_all() returns None because the
+# component has not yet reported back. Stop here and wait for the rerun the
+# component triggers once it delivers the browser's cookies — otherwise we
+# would always see "no cookie" on first render and overwrite any existing
+# session_id with a fresh UUID.
+if _cookies is None:
+    st.stop()
+
+_existing_sid = _cookies.get(_SESSION_COOKIE_NAME)
+if _existing_sid:
+    # Cookie present → reuse it so the backend can find prior turns.
+    st.session_state["session_id"] = _existing_sid
+elif "session_id" not in st.session_state:
+    # No cookie yet → mint a fresh ID and persist it for next reload.
+    new_sid = str(uuid.uuid4())
+    st.session_state["session_id"] = new_sid
+    _cookie_manager.set(
+        _SESSION_COOKIE_NAME,
+        new_sid,
+        expires_at=datetime.datetime.now()
+        + datetime.timedelta(days=_SESSION_COOKIE_TTL_DAYS),
+        key="kuda_set_session_cookie",
+    )
 
 # ---------------------------------------------------------------------------
 # Analytics — Umami Cloud

@@ -327,17 +327,25 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
                 stream_kwargs["memory"] = session_memory
             for event in _query_router.route_stream(**stream_kwargs):
                 event_queue.put(event)
-                # Persist turn to SQLite when streaming completes
+                # Persist turn to SQLite when streaming completes.
+                # The router has already added the turn (with sources) to the
+                # in-memory ConversationMemory before yielding `done`, so we
+                # read sources back from there to keep the SQLite copy
+                # consistent with the in-memory cache across restarts.
                 if (
                     event.get("step") == "done"
                     and request.session_id
                     and _session_store is not None
                 ):
                     result = event.get("result", {})
+                    persisted_sources = (
+                        session_memory.last_sources() if session_memory else []
+                    )
                     _session_store.persist_turn(
                         request.session_id,
                         request.question,
                         result.get("answer", ""),
+                        persisted_sources,
                     )
         except Exception as exc:
             logger.error("Stream query failed: %s", exc, exc_info=True)
