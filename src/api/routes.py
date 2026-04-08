@@ -299,6 +299,7 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
             ):
                 event_queue.put(event)
         except Exception as exc:
+            logger.error("Stream query failed: %s", exc, exc_info=True)
             exc_str = str(exc)
             if _is_rate_limit_error(exc):
                 event_queue.put({"step": "error", "code": 429, "message": exc_str})

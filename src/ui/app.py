@@ -220,8 +220,6 @@ st.markdown('<meta name="robots" content="noindex, nofollow">', unsafe_allow_htm
 st.html(
     '<script async src="https://cloud.umami.is/script.js"'
     ' data-website-id="cf6c908e-1236-4406-8c02-88aa7c9a0db2"></script>',
-    height=0,
-    width=0,
 )
 
 # ---------------------------------------------------------------------------
