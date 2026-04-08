@@ -75,14 +75,15 @@ TEXTS: dict[str, dict[str, str]] = {
             "hybrid søgning med reranking "
             "og LLM-genererede svar med kildehenvisninger. LLM-laget er provider-agnostisk. "
             "To tilstande: en LangGraph Plan-and-Execute-agent (standard) med samtalehukommelse til komplekse forespørgsler, "
-            "og en foruddefineret pipeline til lette modeller. Søgekvaliteten evalueres med RAGAS."
+            "og en foruddefineret pipeline til lette modeller. Søgekvaliteten evalueres med RAGAS. "
+            'Vidensbasen indeholder <a href="https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs" target="_blank">Københavns Universitets regler og retningslinjer</a>. Prøv at stille et spørgsmål om den.'
         ),
         "search_label": "Stil et spørgsmål om ... ",
         "search_placeholder": "F.eks.: Hvad er reglerne for behandling af personoplysninger?",
         "search_button": "Søg",
         "example_button": "Tilfældigt eksempel",
         "spinner": "Søger i dokumenterne ...",
-        "status_label": "Tænker",
+        "status_label": "Tænker ...",
         "status_done": "Færdig",
         "status_error": "Noget gik galt",
         "confidence_label": "Konfidensgrad",
@@ -158,14 +159,15 @@ TEXTS: dict[str, dict[str, str]] = {
             "and LLM-generated answers with source citations. The LLM layer is provider-agnostic. "
             "Two modes: a LangGraph Plan-and-Execute agent (default) with conversation memory for complex multi-step queries, "
             "and a predefined pipeline for lightweight models. "
-            "Retrieval quality is evaluated with RAGAS."
+            "Retrieval quality is evaluated with RAGAS. "
+            'The knowledge base contains <a href="https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs" target="_blank">University of Copenhagen rules and regulations</a>. Try to ask a question about it.'
         ),
         "search_label": "Ask a question ...",
         "search_placeholder": "E.g.: What are the rules for processing personal data?",
         "search_button": "Search",
         "example_button": "Random question",
         "spinner": "Searching documents ...",
-        "status_label": "Thinking",
+        "status_label": "Thinking ...",
         "status_done": "Done",
         "status_error": "Something went wrong",
         "confidence_label": "Confidence",
@@ -277,6 +279,13 @@ st.markdown(
         margin: 0 0 2rem 0;
         line-height: 1.6;
     }
+    .app-subtitle a {
+        color: #901A1E;
+        text-decoration: underline;
+    }
+    .app-subtitle a:hover {
+        color: #6B1315;
+    }
     @media (max-width: 640px) {
         .app-subtitle {
             font-size: 0.82rem;
@@ -314,7 +323,16 @@ st.markdown(
 
     /* ---------- Shrink main area top gap to align title with sidebar heading ---------- */
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 0.2rem !important;
+    }
+    /* Tighten language selector row so it doesn't push the title down */
+    div[data-testid="stHorizontalBlock"]:has(div[role="radiogroup"]) {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    div[role="radiogroup"] {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
     }
     section[data-testid="stSidebar"] .sidebar-heading {
         font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
