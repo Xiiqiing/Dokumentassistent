@@ -82,7 +82,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "search_button": "Søg",
         "example_button": "Tilfældigt eksempel",
         "spinner": "Søger i dokumenterne ...",
-        "status_label": "Behandler forespørgsel ...",
+        "status_label": "Tænker",
         "status_done": "Færdig",
         "status_error": "Noget gik galt",
         "confidence_label": "Konfidensgrad",
@@ -165,7 +165,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "search_button": "Search",
         "example_button": "Random question",
         "spinner": "Searching documents ...",
-        "status_label": "Processing query ...",
+        "status_label": "Thinking",
         "status_done": "Done",
         "status_error": "Something went wrong",
         "confidence_label": "Confidence",
@@ -485,6 +485,22 @@ st.markdown(
         font-weight: 400;
         margin-left: 0.5rem;
         font-size: 0.92rem;
+    }
+
+    /* ---------- Animated thinking dots on st.status label ---------- */
+    @keyframes thinking-dots {
+        from { width: 0; }
+        to   { width: 1.2em; }
+    }
+    details[data-testid="stStatus"] > summary div[data-testid="stMarkdownContainer"] p::after {
+        content: "...";
+        display: inline-block;
+        width: 0;
+        overflow: hidden;
+        vertical-align: bottom;
+        white-space: nowrap;
+        margin-left: 0.15em;
+        animation: thinking-dots 1.2s steps(4, end) infinite;
     }
 
     /* ---------- Expander ---------- */
