@@ -389,7 +389,7 @@ def make_retrieval_tools(
             # Truncate to avoid exceeding context limits
             max_chars = 8000
             if len(full_text) > max_chars:
-                full_text = full_text[:max_chars] + "\n\n[... teksten er forkortet ...]"
+                full_text = full_text[:max_chars] + "\n\n[... teksten er forkortet ... (text truncated)]"
 
             summary_prompt = (
                 "Produce a structured summary of the following document. "

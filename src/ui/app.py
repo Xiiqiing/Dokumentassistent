@@ -115,6 +115,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "pipeline_score_change": "Score-ændring",
         "pipeline_plan_steps": "Udførelsesplan",
         "pipeline_tool_calls": "Værktøjskald",
+        "synthesize_status": "Syntetiserer endeligt svar ...",
+        "example_note": "",
     },
     "en": {
         "page_title": "Document Intelligence System",
@@ -196,6 +198,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "pipeline_score_change": "Score change",
         "pipeline_plan_steps": "Execution Plan",
         "pipeline_tool_calls": "Tool Calls",
+        "synthesize_status": "Synthesizing final answer ...",
+        "example_note": "ℹ️ Example questions are in Danish (the document language).",
     },
 }
 
@@ -634,6 +638,8 @@ with st.form(key="search_form", clear_on_submit=False):
         search_clicked = st.form_submit_button(t["search_button"], use_container_width=True)
     with col_example:
         st.form_submit_button(t["example_button"], on_click=_pick_example, use_container_width=True)
+        if t["example_note"]:
+            st.caption(t["example_note"])
 
 # Show subtitle only when no search is active
 if not search_clicked and not st.session_state.get("has_searched"):
@@ -734,11 +740,7 @@ if search_clicked and question.strip():
                         )
 
                     elif _step == "synthesize":
-                        st.write(
-                            "Syntetiserer endeligt svar ..."
-                            if lang == "da"
-                            else "Synthesizing final answer ..."
-                        )
+                        st.write(t["synthesize_status"])
 
                     elif _step == "tool_call":
                         _tool_name = _event.get("tool", "")

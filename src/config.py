@@ -40,6 +40,7 @@ class Settings:
 
     # OpenAI
     openai_api_key: str
+    openai_base_url: str
     openai_model: str
     openai_embedding_model: str
 
@@ -121,6 +122,7 @@ def load_settings() -> Settings:
 
         # OpenAI
         openai_api_key=os.environ.get("OPENAI_API_KEY", ""),
+        openai_base_url=os.environ.get("OPENAI_BASE_URL", ""),
         openai_model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
         openai_embedding_model=os.environ.get("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
 

@@ -56,11 +56,14 @@ def create_llm(settings: Settings) -> BaseChatModel:
         case "openai":
             from langchain_openai import ChatOpenAI
 
-            return ChatOpenAI(
-                model=settings.openai_model,
-                api_key=settings.openai_api_key,
-                temperature=0.0,
-            )
+            kwargs: dict = {
+                "model": settings.openai_model,
+                "api_key": settings.openai_api_key,
+                "temperature": 0.0,
+            }
+            if settings.openai_base_url:
+                kwargs["base_url"] = settings.openai_base_url
+            return ChatOpenAI(**kwargs)
 
         case "groq":
             from langchain_openai import ChatOpenAI

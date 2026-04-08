@@ -220,7 +220,7 @@ async def query_documents(request: QueryRequest) -> QueryResponse:
             logger.warning("Rate limit / quota exhausted: %s", exc_str)
             raise HTTPException(
                 status_code=429,
-                detail="API-kvoten er midlertidigt opbrugt. Vent venligst et øjeblik, og prøv igen.",
+                detail="API quota temporarily exhausted. Please wait a moment and try again.",
             ) from exc
         raise
 
