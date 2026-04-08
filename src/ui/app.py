@@ -636,7 +636,10 @@ with st.form(key="search_form", clear_on_submit=False):
     with col_example:
         st.form_submit_button(t["example_button"], on_click=_pick_example, use_container_width=True)
         if t["example_note"]:
-            st.caption(t["example_note"])
+            st.markdown(
+                f'<div style="text-align:right;font-size:0.85em;color:gray;">{t["example_note"]}</div>',
+                unsafe_allow_html=True,
+            )
 
 # Show subtitle only when no search is active
 if not search_clicked and not st.session_state.get("has_searched"):
