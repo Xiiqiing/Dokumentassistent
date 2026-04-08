@@ -488,11 +488,14 @@ st.markdown(
     }
 
     /* ---------- Animated thinking dots on st.status label ---------- */
+    /* st.status renders as <details data-testid="stExpander"> in Streamlit 1.56;
+       we scope the animation to the running state by requiring the spinner icon. */
     @keyframes thinking-dots {
-        from { width: 0; }
-        to   { width: 1.2em; }
+        0%   { width: 0; }
+        100% { width: 1.5em; }
     }
-    details[data-testid="stStatus"] > summary div[data-testid="stMarkdownContainer"] p::after {
+    details[data-testid="stExpander"]:has([data-testid="stExpanderIconSpinner"])
+        summary [data-testid="stMarkdownContainer"] p::after {
         content: "...";
         display: inline-block;
         width: 0;
