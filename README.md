@@ -10,14 +10,14 @@ noindex: true
 
 # Dokumentassistent
 
-## Live demo 
+## Live demo
 Hosted on Hugging Face Spaces: [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space)
 
 [Skip to English ↓](#english)
 
 ## Dansk
 
-En produktionsklar RAG-applikation, der gør det muligt at stille spørgsmål til dokumenter på et hvilket som helst sprog og få svar med kildehenvisninger. Systemet er bygget på open source-komponenter (LangChain, LangGraph, Qdrant, Ollama) og kan køre helt lokalt uden eksterne API-kald. Det implementerer hybrid søgning med reranking, en Plan-and-Execute agent med samtalehukommelse, og RAGAS-baseret evaluering af svarkvaliteten.
+En RAG-applikation, der lader brugeren stille spørgsmål til dokumenter på et hvilket som helst sprog og få svar med kildehenvisninger. Systemet er bygget på open source-komponenter (LangChain, LangGraph, Qdrant, Ollama) og kan køre lokalt uden API-nøgler. Det bruger hybrid søgning med reranking, en Plan-and-Execute-agent med samtalehukommelse, og RAGAS-baseret evaluering af svarkvaliteten.
 
 ### Funktioner
 
@@ -42,9 +42,9 @@ Når en bruger stiller et spørgsmål, kører systemet både den semantiske og d
 
 Systemet kan køre i to forskellige tilstande, der vælges via miljøvariablen `AGENT_MODE`.
 
-**Pipeline** (`AGENT_MODE=pipeline`) bygger på en fast LangGraph-graf med sprogdetektion, valgfri oversættelse, hybrid søgning, reranking og generering. Tilstanden har en confidence-baseret retry-loop og fungerer fint med lette lokale modeller.
+**Pipeline** (`AGENT_MODE=pipeline`) er en fast LangGraph-DAG, der kører sprogdetektion, valgfri oversættelse, hybrid søgning, reranking, generering, plus en confidence-baseret retry-loop. Den fungerer fint med små lokale modeller, der ikke understøtter tool calling.
 
-**Plan-and-Execute Agent** (`AGENT_MODE=react`, standard) er en flertrinsagent, hvor en planner først nedbryder spørgsmålet i delopgaver, en executor kører hver delopgave gennem en ReAct-subagent med adgang til et sæt værktøjer, og en synthesizer producerer det endelige svar med kildehenvisninger. Tilstanden indeholder samtalehukommelse til opfølgende spørgsmål og kræver en model, der understøtter tool calling.
+**Plan-and-Execute-agent** (`AGENT_MODE=react`, standard) er flertrinet: en planner nedbryder først spørgsmålet i delopgaver, en executor kører hver delopgave gennem en ReAct-subagent med adgang til værktøjerne nedenfor, og en synthesizer samler resultaterne til ét svar med kildehenvisninger. Den bruger samtalehukommelse til opfølgende spørgsmål og kræver en model, der understøtter tool calling.
 
 | Værktøj | Formål |
 |---|---|
@@ -57,12 +57,9 @@ Systemet kan køre i to forskellige tilstande, der vælges via miljøvariablen `
 
 ### Produktionshensyn
 
-- **Sporbarhed.** Hvert genereret svar har kildehenvisninger på chunk-niveau med dokument-ID, sidenummer og tekststykke, så det kan revideres bagudrettet.
-- **Governance.** RAGAS-evalueringspipelinen i `src/evaluation/` gør det muligt at måle faithfulness og context precision, før ændringer slippes løs i produktion.
-- **Konfigurerbarhed.** Ingen hardkodede stier, modelnavne eller API-nøgler. Alt styres via miljøvariabler gennem `src/config.py`.
-- **Provider-neutralitet.** Forretningskoden importerer aldrig en provider-SDK direkte. LLM- og embedding-backends skiftes via factory-funktionerne `create_llm()` og `create_embeddings()`, hvilket undgår vendor lock-in.
-- **Lokal som standard.** Standardkonfigurationen kører helt uden eksterne API-kald og passer til miljøer med strenge krav til datahjemsted.
-- **Pakket i containere.** Docker Compose til lokal kørsel og Hugging Face Spaces til den offentlige demo.
+Hvert svar henviser tilbage til de tekststykker, det bygger på, med dokument-ID, sidenummer og selve teksten, så svarene kan kontrolleres bagefter. RAGAS-evalueringen i `src/evaluation/` måler faithfulness og context precision, så man kan opdage forringelser, før en ændring går i drift.
+
+Konfigurationen ligger i miljøvariabler via `src/config.py`; der er ingen hardkodede stier, modelnavne eller API-nøgler. Koden importerer aldrig en provider-SDK direkte — LLM- og embedding-backends hentes gennem `create_llm()` og `create_embeddings()`, så man kan skifte mellem Ollama, OpenAI og andre uden at røre den øvrige kode. Standardopsætningen kører lokalt uden eksterne API-kald.
 
 ### Teknologivalg
 
@@ -89,13 +86,13 @@ Se `.env.example` for konfiguration pr. provider.
 
 Demoen ligger på [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space).
 
-Prøv for eksempel disse spørgsmål på et hvilket som helst sprog.
+Prøv disse spørgsmål — eller dine egne — på et hvilket som helst sprog.
 
 - "Hvad er KU's politik for brug af AI-værktøjer?"
 - "Hvilke regler gælder for brug af generativ AI i eksamen?"
 - "Sammenlign reglerne for AI-brug i forskning og undervisning."
 
-Det sidste spørgsmål udløser Plan-and-Execute-agenten, så man kan se den nedbryde spørgsmålet i delopgaver i realtid.
+Det tredje spørgsmål udløser Plan-and-Execute-agenten, så man kan se den nedbryde spørgsmålet i delopgaver i realtid.
 
 ### Kom i gang
 
@@ -187,7 +184,7 @@ docs/                      # eksempel-PDF'er eller tekster (KU AI-dokumenter)
 
 ## English
 
-A production-ready RAG application that lets users ask questions about Danish documents in any language and receive answers with source citations. The system is built on open source components (LangChain, LangGraph, Qdrant, Ollama) and can run fully local without any external API calls. It implements hybrid search with reranking, a Plan-and-Execute agent with conversation memory, and RAGAS-based evaluation of answer quality.
+A RAG application that lets users ask questions about documents in any language and get answers with source citations. The system is built on open source components (LangChain, LangGraph, Qdrant, Ollama) and can run locally without API keys. It uses hybrid search with reranking, a Plan-and-Execute agent with conversation memory, and RAGAS-based evaluation of answer quality.
 
 ### Capabilities
 
@@ -198,7 +195,7 @@ A production-ready RAG application that lets users ask questions about Danish do
 | Reranking | Cross-encoder `mmarco-mMiniLMv2-L12-H384-v1` |
 | Agent flows | Plan-and-Execute with six tools, ReAct sub-agent and conversation memory |
 | Evaluation | RAGAS metrics (faithfulness, answer relevancy, context precision) |
-| Traceability | Each answer carries source references with chunk ID and page number, plus structured logging |
+| Traceability | Each answer includes source references with chunk ID and page number, plus structured logging |
 | Provider abstraction | Factory pattern that allows swapping between Ollama, OpenAI, Azure OpenAI, Anthropic and Google GenAI without touching business code |
 | Deployment | Docker Compose for local setup, Hugging Face Spaces for the public demo |
 
@@ -212,9 +209,9 @@ At query time, both indexes are searched and the results merged with reciprocal 
 
 The system can run in two different modes, switchable via the `AGENT_MODE` environment variable.
 
-**Pipeline** (`AGENT_MODE=pipeline`) is built on a fixed LangGraph graph with language detection, optional translation, hybrid retrieval, reranking, and generation. The mode has a confidence-based retry loop and works well with lightweight local models.
+**Pipeline** (`AGENT_MODE=pipeline`) is a fixed LangGraph DAG that runs language detection, optional translation, hybrid retrieval, reranking, generation, and a confidence-based retry loop. It works well with small local models that don't support tool calling.
 
-**Plan-and-Execute Agent** (`AGENT_MODE=react`, default) is a multi-step agent where a planner first decomposes the query into sub-tasks, an executor runs each sub-task through a ReAct sub-agent with access to a set of tools, and a synthesizer produces the final answer with citations. The mode includes conversation memory for follow-up questions and requires a model that supports tool calling.
+**Plan-and-Execute agent** (`AGENT_MODE=react`, default) is multi-step: a planner first decomposes the query into sub-tasks, an executor runs each sub-task through a ReAct sub-agent with access to the tools listed below, and a synthesizer combines the results into a single cited answer. It uses conversation memory for follow-up questions and requires a model that supports tool calling.
 
 | Tool | Purpose |
 |---|---|
@@ -227,12 +224,9 @@ The system can run in two different modes, switchable via the `AGENT_MODE` envir
 
 ### Production considerations
 
-- **Traceability.** Every generated answer carries chunk-level source references with document ID, page number and span, so it can be audited and reviewed afterwards.
-- **Governance.** The RAGAS evaluation pipeline in `src/evaluation/` lets you measure faithfulness and context precision before promoting changes to production.
-- **Configurability.** No hardcoded paths, model names or API keys. Everything is controlled via environment variables through `src/config.py`.
-- **Provider neutrality.** Business code never imports a provider SDK directly. LLM and embedding backends swap via the `create_llm()` and `create_embeddings()` factory functions, which avoids vendor lock-in.
-- **Local-first.** The default configuration runs entirely without external API calls and fits environments with strict data residency requirements.
-- **Containerized.** Docker Compose for local runs and Hugging Face Spaces for the public demo.
+Every answer points back to the chunks it was built on, with document ID, page number and the chunk text itself, so answers can be checked after the fact. The RAGAS evaluation in `src/evaluation/` measures faithfulness and context precision, which lets you catch regressions before a change goes live.
+
+Configuration lives in environment variables via `src/config.py`; there are no hardcoded paths, model names or API keys. The application code never imports a provider SDK directly — LLM and embedding backends are loaded through `create_llm()` and `create_embeddings()`, so you can switch between Ollama, OpenAI and others without touching the rest of the code. The default setup runs locally without any external API calls.
 
 ### Tech stack
 
@@ -259,7 +253,7 @@ See `.env.example` for per-provider configuration.
 
 The demo lives at [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space).
 
-Try asking these questions, or in your language.
+Try these questions, or ask one of your own in any language.
 
 - "Hvad er KU's politik for brug af AI-værktøjer?"
 - "Hvilke regler gælder for brug af generativ AI i eksamen?"
