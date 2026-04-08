@@ -618,6 +618,145 @@ st.markdown(
 _subtitle_slot = st.empty()
 
 # ---------------------------------------------------------------------------
+# Result rendering (extracted so it can be reused for cached results)
+# ---------------------------------------------------------------------------
+def _render_results(data: dict, t: dict, strategy: str, top_k: int) -> None:
+    """Render query results: metadata bar, answer, sources, pipeline details."""
+    confidence = data.get("confidence", 0.0)
+    intent = data.get("intent", t["unknown"])
+    confidence_pct = f"{confidence * 100:.0f}%"
+
+    st.markdown(
+        f'<div class="result-meta">'
+        f'{t["confidence_label"]}: <strong>{confidence_pct}</strong> &nbsp;&middot;&nbsp; '
+        f'{t["intent_label"]}: <strong>{intent}</strong> &nbsp;&middot;&nbsp; '
+        f'{t["strategy_label"]}: <strong>{strategy}</strong> &nbsp;&middot;&nbsp; '
+        f"top_k: <strong>{top_k}</strong>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    answer = data.get("answer", t["no_answer"])
+    st.markdown(answer)
+
+    sources = data.get("sources", [])
+    if sources:
+        with st.expander(f'{t["sources_label"]} ({len(sources)})', expanded=False):
+            for src in sources:
+                doc_name = src.get("document_id", src.get("chunk_id", t["unknown"]))
+                text = src.get("text", "")
+                score = src.get("score", 0.0)
+                retrieval_source = src.get("source", "")
+                metadata = src.get("metadata", {})
+                page = metadata.get("page_number", "") if isinstance(metadata, dict) else ""
+
+                page_info = f' &middot; {t["page_label"]} {page}' if page else ""
+                score_display = f"{score:.3f}"
+
+                st.markdown(
+                    f'<div class="source-card">'
+                    f'<div class="source-card-title">{html.escape(doc_name)}{page_info}</div>'
+                    f'<div class="source-card-text">{html.escape(text[:500])}</div>'
+                    f'<div class="source-card-meta">'
+                    f"Score: {score_display} &nbsp;&middot;&nbsp; {html.escape(retrieval_source)}"
+                    f"</div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+    else:
+        st.info(t["no_sources"])
+
+    pd_details = data.get("pipeline_details", {})
+    if pd_details:
+        with st.expander(t["pipeline_heading"], expanded=False):
+            plan_steps = pd_details.get("plan_steps", [])
+            if plan_steps:
+                st.markdown(f'**{t["pipeline_plan_steps"]}**')
+                for i, step_item in enumerate(plan_steps, 1):
+                    st.markdown(f"{i}. {step_item}")
+                st.markdown("---")
+
+            tool_calls = pd_details.get("tool_calls", [])
+            if tool_calls:
+                st.markdown(f'**{t["pipeline_tool_calls"]}**')
+                for tc in tool_calls:
+                    st.markdown(f"- `{tc}`")
+                st.markdown("---")
+
+            if pd_details.get("translated"):
+                st.markdown(f'**{t["pipeline_translation"]}**')
+                st.markdown(
+                    f'- {t["pipeline_lang"]}: **{pd_details.get("detected_language", "")}**\n'
+                    f'- {t["pipeline_original"]}: {pd_details.get("original_query", "")}\n'
+                    f'- {t["pipeline_translated"]}: {pd_details.get("retrieval_query", "")}'
+                )
+                st.markdown("---")
+
+            def _truncate_doc(name: str, max_len: int = 30) -> str:
+                return name if len(name) <= max_len else name[:max_len - 1] + "\u2026"
+
+            def _render_result_table(results: list[dict], label: str) -> None:
+                st.markdown(f"**{label}**")
+                if not results:
+                    st.caption(t["pipeline_no_results"])
+                    return
+                header = f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | {t["pipeline_score"]} |\n|---|---|---|'
+                rows = "\n".join(
+                    f'| {i + 1} | {_truncate_doc(r.get("document_id", ""))} | {r.get("score", 0):.4f} |'
+                    for i, r in enumerate(results)
+                )
+                st.markdown(f"{header}\n{rows}")
+
+            _has_retrieval = bool(
+                pd_details.get("dense_results") or pd_details.get("sparse_results") or pd_details.get("fused_results")
+            )
+
+            if _has_retrieval:
+                _render_result_table(pd_details.get("sparse_results", []), t["pipeline_bm25"])
+                st.markdown("---")
+                _render_result_table(pd_details.get("dense_results", []), t["pipeline_dense"])
+                st.markdown("---")
+                _render_result_table(pd_details.get("fused_results", []), t["pipeline_fused"])
+                st.markdown("---")
+
+            reranked = pd_details.get("reranked_results", [])
+            st.markdown(f'**{t["pipeline_reranked"]}**')
+            if reranked:
+                if _has_retrieval:
+                    fused_scores: dict[str, float] = {
+                        r.get("chunk_id", ""): r.get("score", 0.0)
+                        for r in pd_details.get("fused_results", [])
+                    }
+                    header = (
+                        f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | '
+                        f'{t["pipeline_score"]} | {t["pipeline_score_change"]} |\n'
+                        f"|---|---|---|---|"
+                    )
+                    rows_list = []
+                    for i, r in enumerate(reranked):
+                        cid = r.get("chunk_id", "")
+                        new_score = r.get("score", 0.0)
+                        old_score = fused_scores.get(cid)
+                        if old_score is not None:
+                            change = f"RRF {old_score:.4f} -> {new_score:.4f}"
+                        else:
+                            change = "-"
+                        rows_list.append(
+                            f'| {i + 1} | {_truncate_doc(r.get("document_id", ""))} | {new_score:.4f} | {change} |'
+                        )
+                    st.markdown(f"{header}\n" + "\n".join(rows_list))
+                else:
+                    header = f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | {t["pipeline_score"]} |\n|---|---|---|'
+                    rows = "\n".join(
+                        f'| {i + 1} | {_truncate_doc(r.get("document_id", ""))} | {r.get("score", 0):.4f} |'
+                        for i, r in enumerate(reranked)
+                    )
+                    st.markdown(f"{header}\n{rows}")
+            else:
+                st.caption(t["pipeline_no_results"])
+
+
+# ---------------------------------------------------------------------------
 # Search form
 # ---------------------------------------------------------------------------
 def _pick_example() -> None:
@@ -838,160 +977,25 @@ if search_clicked and question.strip():
             st.error(f'{t["err_api"]}: {_sse_error.get("message", "")}')
         st.stop()
 
-    # -- Metadata bar --
-    confidence = data.get("confidence", 0.0)
-    intent = data.get("intent", t["unknown"])
-    confidence_pct = f"{confidence * 100:.0f}%"
+    # Cache result in session_state so it survives iOS tombstone / reconnect
+    st.session_state["last_result"] = data
+    st.session_state["last_question"] = question.strip()
+    st.session_state["last_strategy"] = strategy
+    st.session_state["last_top_k"] = top_k
 
-    st.markdown(
-        f'<div class="result-meta">'
-        f'{t["confidence_label"]}: <strong>{confidence_pct}</strong> &nbsp;&middot;&nbsp; '
-        f'{t["intent_label"]}: <strong>{intent}</strong> &nbsp;&middot;&nbsp; '
-        f'{t["strategy_label"]}: <strong>{strategy}</strong> &nbsp;&middot;&nbsp; '
-        f"top_k: <strong>{top_k}</strong>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-
-    # -- Answer --
-    answer = data.get("answer", t["no_answer"])
-    st.markdown(answer)
-
-    # -- Sources --
-    sources = data.get("sources", [])
-    if sources:
-        with st.expander(f'{t["sources_label"]} ({len(sources)})', expanded=False):
-            for src in sources:
-                doc_name = src.get("document_id", src.get("chunk_id", t["unknown"]))
-                text = src.get("text", "")
-                score = src.get("score", 0.0)
-                retrieval_source = src.get("source", "")
-                metadata = src.get("metadata", {})
-                page = metadata.get("page_number", "") if isinstance(metadata, dict) else ""
-
-                page_info = f' &middot; {t["page_label"]} {page}' if page else ""
-                score_display = f"{score:.3f}"
-
-                st.markdown(
-                    f'<div class="source-card">'
-                    f'<div class="source-card-title">{html.escape(doc_name)}{page_info}</div>'
-                    f'<div class="source-card-text">{html.escape(text[:500])}</div>'
-                    f'<div class="source-card-meta">'
-                    f"Score: {score_display} &nbsp;&middot;&nbsp; {html.escape(retrieval_source)}"
-                    f"</div>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-    else:
-        st.info(t["no_sources"])
-
-    # -- Pipeline Details --
-    pd = data.get("pipeline_details", {})
-    if pd:
-        with st.expander(t["pipeline_heading"], expanded=False):
-            # 0) Plan steps and tool calls (Plan-and-Execute mode)
-            plan_steps = pd.get("plan_steps", [])
-            if plan_steps:
-                st.markdown(f'**{t["pipeline_plan_steps"]}**')
-                for i, step in enumerate(plan_steps, 1):
-                    st.markdown(f"{i}. {step}")
-                st.markdown("---")
-
-            tool_calls = pd.get("tool_calls", [])
-            if tool_calls:
-                st.markdown(f'**{t["pipeline_tool_calls"]}**')
-                for tc in tool_calls:
-                    st.markdown(f"- `{tc}`")
-                st.markdown("---")
-
-            # 1) Query translation (only show if translation actually happened)
-            if pd.get("translated"):
-                st.markdown(f'**{t["pipeline_translation"]}**')
-                st.markdown(
-                    f'- {t["pipeline_lang"]}: **{pd.get("detected_language", "")}**\n'
-                    f'- {t["pipeline_original"]}: {pd.get("original_query", "")}\n'
-                    f'- {t["pipeline_translated"]}: {pd.get("retrieval_query", "")}'
-                )
-                st.markdown("---")
-
-            def _truncate_doc(name: str, max_len: int = 30) -> str:
-                """Truncate long document names for table display."""
-                return name if len(name) <= max_len else name[:max_len - 1] + "…"
-
-            def _render_result_table(results: list[dict], label: str) -> None:
-                """Render a ranked results table."""
-                st.markdown(f"**{label}**")
-                if not results:
-                    st.caption(t["pipeline_no_results"])
-                    return
-                header = f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | {t["pipeline_score"]} |\n|---|---|---|'
-                rows = "\n".join(
-                    f'| {i + 1} | {_truncate_doc(r.get("document_id", ""))} | {r.get("score", 0):.4f} |'
-                    for i, r in enumerate(results)
-                )
-                st.markdown(f"{header}\n{rows}")
-
-            _has_retrieval = bool(
-                pd.get("dense_results") or pd.get("sparse_results") or pd.get("fused_results")
-            )
-
-            if _has_retrieval:
-                # 2) BM25 results
-                _render_result_table(pd.get("sparse_results", []), t["pipeline_bm25"])
-
-                st.markdown("---")
-
-                # 3) Vector search results
-                _render_result_table(pd.get("dense_results", []), t["pipeline_dense"])
-
-                st.markdown("---")
-
-                # 4) RRF fused ranking
-                _render_result_table(pd.get("fused_results", []), t["pipeline_fused"])
-
-                st.markdown("---")
-
-            # 5) Reranked / fetched results
-            reranked = pd.get("reranked_results", [])
-            st.markdown(f'**{t["pipeline_reranked"]}**')
-            if reranked:
-                if _has_retrieval:
-                    # Show score change from RRF → reranking
-                    fused_scores: dict[str, float] = {
-                        r.get("chunk_id", ""): r.get("score", 0.0)
-                        for r in pd.get("fused_results", [])
-                    }
-                    header = (
-                        f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | '
-                        f'{t["pipeline_score"]} | {t["pipeline_score_change"]} |\n'
-                        f"|---|---|---|---|"
-                    )
-                    rows_list = []
-                    for i, r in enumerate(reranked):
-                        cid = r.get("chunk_id", "")
-                        new_score = r.get("score", 0.0)
-                        old_score = fused_scores.get(cid)
-                        if old_score is not None:
-                            change = f"RRF {old_score:.4f} -> {new_score:.4f}"
-                        else:
-                            change = "-"
-                        rows_list.append(
-                            f'| {i + 1} | {_truncate_doc(r.get("document_id", ""))} | {new_score:.4f} | {change} |'
-                        )
-                    st.markdown(f"{header}\n" + "\n".join(rows_list))
-                else:
-                    # No hybrid search was used (e.g. fetch_document only) — simple table
-                    header = f'| {t["pipeline_rank"]} | {t["pipeline_doc"]} | {t["pipeline_score"]} |\n|---|---|---|'
-                    rows = "\n".join(
-                        f'| {i + 1} | {_truncate_doc(r.get("document_id", ""))} | {r.get("score", 0):.4f} |'
-                        for i, r in enumerate(reranked)
-                    )
-                    st.markdown(f"{header}\n{rows}")
-            else:
-                st.caption(t["pipeline_no_results"])
+    _render_results(data, t, strategy, top_k)
 
 elif search_clicked:
     st.warning(t["empty_warning"])
+
+elif "last_result" in st.session_state:
+    # Restore cached results after iOS tombstone / reconnect
+    _render_results(
+        st.session_state["last_result"],
+        t,
+        st.session_state.get("last_strategy", strategy),
+        st.session_state.get("last_top_k", top_k),
+    )
 
 # ---------------------------------------------------------------------------
 # Footer

@@ -41,7 +41,6 @@ _MAX_STEPS = 6
 # ------------------------------------------------------------------
 
 _PLANNER_PROMPT = (
-    "/no_think\n"
     "You are a planning assistant for the University of Copenhagen (KU) document system.\n\n"
     "Given a user question, produce a JSON list of 1–4 steps needed to answer it.\n"
     "Each step is an object with:\n"
@@ -71,6 +70,7 @@ _PLANNER_PROMPT = (
 )
 
 _EXECUTOR_SYSTEM = (
+    "/no_think\n"
     "You are executing ONE step of a plan to answer a user's question about "
     "University of Copenhagen (KU) documents.\n\n"
     "You have retrieval tools available. Execute the step described below, "
