@@ -199,7 +199,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "pipeline_plan_steps": "Execution Plan",
         "pipeline_tool_calls": "Tool Calls",
         "synthesize_status": "Synthesizing final answer ...",
-        "example_note": "ℹ️ Example questions are in Danish (the document language).",
+        "example_note": "ℹ️ Random questions are in Danish.",
     },
 }
 
@@ -217,8 +217,7 @@ st.markdown('<meta name="robots" content="noindex, nofollow">', unsafe_allow_htm
 # ---------------------------------------------------------------------------
 # Analytics — Umami Cloud
 # ---------------------------------------------------------------------------
-import streamlit.components.v1 as components
-components.html(
+st.html(
     '<script async src="https://cloud.umami.is/script.js"'
     ' data-website-id="cf6c908e-1236-4406-8c02-88aa7c9a0db2"></script>',
     height=0,
