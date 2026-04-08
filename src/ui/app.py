@@ -199,7 +199,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "pipeline_plan_steps": "Execution Plan",
         "pipeline_tool_calls": "Tool Calls",
         "synthesize_status": "Synthesizing final answer ...",
-        "example_note": "ℹ️ Random questions are in Danish.",
+        "example_note": "",
     },
 }
 
