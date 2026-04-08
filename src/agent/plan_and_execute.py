@@ -48,6 +48,7 @@ _PLANNER_PROMPT = (
     '"summarize", "list_docs", "fetch_doc"\n'
     '  - "detail": a short description of what to do (e.g. the search query, document ID)\n\n'
     "Rules:\n"
+    "- IMPORTANT: Most questions probably only need 1 step. Only use 2+ steps when the question explicitly asks about multiple distinct topics.\n"
     "- For simple factual questions: 1 search step is enough.\n"
     "- For comparison questions: use multi_search or separate search steps.\n"
     "- For document overview requests: use summarize.\n"
@@ -302,62 +303,80 @@ class PlanAndExecuteRouter:
     # Public interface (mirrors QueryRouter)
     # ------------------------------------------------------------------
 
-    def route(self, query: str, top_k: int) -> GenerationResponse:
+    def route(
+        self,
+        query: str,
+        top_k: int,
+        memory: ConversationMemory | None = None,
+    ) -> GenerationResponse:
         """Route a query through the Plan-and-Execute pipeline.
 
         Args:
             query: The user's natural language query.
             top_k: Number of top documents to retrieve per tool call.
+            memory: Optional per-session memory override.  When provided
+                this memory is used instead of the router's default memory.
 
         Returns:
             GenerationResponse with answer, sources, intent, and confidence.
         """
-        logger.info("PlanExec routing query: %s", query)
-        store = ToolResultStore()
+        original_memory = self._memory
+        if memory is not None:
+            self._memory = memory
+        try:
+            logger.info("PlanExec routing query: %s", query)
+            store = ToolResultStore()
 
-        initial_state = PlanExecState(
-            query=query,
-            top_k=top_k,
-            plan=[],
-            step_index=0,
-            step_results=[],
-            answer="",
-        )
+            initial_state = PlanExecState(
+                query=query,
+                top_k=top_k,
+                plan=[],
+                step_index=0,
+                step_results=[],
+                answer="",
+            )
 
-        graph = self._build_graph(store)
-        final_state: PlanExecState = graph.invoke(initial_state)
+            graph = self._build_graph(store)
+            final_state: PlanExecState = graph.invoke(initial_state)
 
-        sources = store.retrieved[:top_k]
-        confidence = max((r.score for r in sources), default=0.0)
+            sources = store.retrieved[:top_k]
+            confidence = max((r.score for r in sources), default=0.0)
 
-        plan_step_strs = [
-            f'{s["action"]}: {s["detail"]}' for s in final_state.get("plan", [])
-        ]
-        tool_call_strs = [f"{name}: {arg}" for name, arg in store.tool_calls]
+            plan_step_strs = [
+                f'{s["action"]}: {s["detail"]}' for s in final_state.get("plan", [])
+            ]
+            tool_call_strs = [f"{name}: {arg}" for name, arg in store.tool_calls]
 
-        response = GenerationResponse(
-            answer=final_state["answer"],
-            sources=sources,
-            intent=IntentType.RAG if sources else IntentType.FACTUAL,
-            confidence=confidence,
-            pipeline_details=PipelineDetails(
-                original_query=query,
-                retrieval_query=", ".join(
-                    q for name, q in store.tool_calls if name == "hybrid_search"
-                ) or query,
-                dense_results=store.dense_results,
-                sparse_results=store.sparse_results,
-                fused_results=store.fused_results,
-                reranked_results=sources,
-                plan_steps=plan_step_strs,
-                tool_calls=tool_call_strs,
-            ),
-        )
+            response = GenerationResponse(
+                answer=final_state["answer"],
+                sources=sources,
+                intent=IntentType.RAG if sources else IntentType.FACTUAL,
+                confidence=confidence,
+                pipeline_details=PipelineDetails(
+                    original_query=query,
+                    retrieval_query=", ".join(
+                        q for name, q in store.tool_calls if name == "hybrid_search"
+                    ) or query,
+                    dense_results=store.dense_results,
+                    sparse_results=store.sparse_results,
+                    fused_results=store.fused_results,
+                    reranked_results=sources,
+                    plan_steps=plan_step_strs,
+                    tool_calls=tool_call_strs,
+                ),
+            )
 
-        self._memory.add_turn(query, response.answer, sources)
-        return response
+            self._memory.add_turn(query, response.answer, sources)
+            return response
+        finally:
+            self._memory = original_memory
 
-    def route_stream(self, query: str, top_k: int) -> Generator[dict, None, None]:
+    def route_stream(
+        self,
+        query: str,
+        top_k: int,
+        memory: ConversationMemory | None = None,
+    ) -> Generator[dict, None, None]:
         """Stream Plan-and-Execute events step by step.
 
         Yields event dicts with step types:
@@ -370,10 +389,21 @@ class PlanAndExecuteRouter:
         Args:
             query: User query.
             top_k: Number of results to retrieve per tool call.
+            memory: Optional per-session memory override.
 
         Yields:
             Step event dicts.
         """
+        original_memory = self._memory
+        if memory is not None:
+            self._memory = memory
+        try:
+            yield from self._route_stream_inner(query, top_k)
+        finally:
+            self._memory = original_memory
+
+    def _route_stream_inner(self, query: str, top_k: int) -> Generator[dict, None, None]:
+        """Internal streaming implementation."""
         store = ToolResultStore()
 
         initial_state = PlanExecState(

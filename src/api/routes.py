@@ -15,6 +15,7 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from src.agent.router import QueryRouter
     from src.agent.plan_and_execute import PlanAndExecuteRouter
+    from src.agent.session_store import SessionStore
     from src.config import Settings
     from src.ingestion.pipeline import IngestionPipeline
     from src.retrieval.bm25_search import BM25Search
@@ -58,6 +59,7 @@ _embedder: "Embedder | None" = None
 _vector_store: "VectorStore | None" = None
 _bm25_search: "BM25Search | None" = None
 _settings: "Settings | None" = None
+_session_store: "SessionStore | None" = None
 
 
 def set_dependencies(
@@ -67,6 +69,7 @@ def set_dependencies(
     vector_store: "VectorStore",
     bm25_search: "BM25Search",
     settings: "Settings",
+    session_store: "SessionStore | None" = None,
 ) -> None:
     """Inject dependencies from the application factory.
 
@@ -77,14 +80,16 @@ def set_dependencies(
         vector_store: VectorStore instance for dense indexing.
         bm25_search: BM25Search instance for sparse indexing.
         settings: Application settings.
+        session_store: Optional SessionStore for per-user conversation memory.
     """
-    global _query_router, _ingestion_pipeline, _embedder, _vector_store, _bm25_search, _settings
+    global _query_router, _ingestion_pipeline, _embedder, _vector_store, _bm25_search, _settings, _session_store
     _query_router = query_router
     _ingestion_pipeline = ingestion_pipeline
     _embedder = embedder
     _vector_store = vector_store
     _bm25_search = bm25_search
     _settings = settings
+    _session_store = session_store
 
 
 class QueryRequest(BaseModel):
@@ -93,6 +98,7 @@ class QueryRequest(BaseModel):
     question: str
     top_k: int = 5
     strategy: str = "recursive"
+    session_id: str = ""
 
 
 class PipelineResultItem(BaseModel):
@@ -210,10 +216,18 @@ async def query_documents(request: QueryRequest) -> QueryResponse:
     Returns:
         QueryResponse with generated answer and source documents.
     """
-    logger.info("Received query: %s", request.question)
+    logger.info("Received query: %s (session=%s)", request.question, request.session_id[:8] if request.session_id else "none")
+
+    # Resolve per-session memory (only used by PlanAndExecuteRouter)
+    session_memory = None
+    if request.session_id and _session_store is not None:
+        session_memory = _session_store.get_memory(request.session_id)
 
     try:
-        response = _query_router.route(query=request.question, top_k=request.top_k)
+        kwargs: dict = {"query": request.question, "top_k": request.top_k}
+        if session_memory is not None and hasattr(_query_router, "_memory"):
+            kwargs["memory"] = session_memory
+        response = _query_router.route(**kwargs)
     except Exception as exc:
         exc_str = str(exc)
         if _is_rate_limit_error(exc):
@@ -223,6 +237,15 @@ async def query_documents(request: QueryRequest) -> QueryResponse:
                 detail="API quota temporarily exhausted. Please wait a moment and try again.",
             ) from exc
         raise
+
+    # Persist the turn to SQLite (in-memory already updated by the router)
+    if request.session_id and _session_store is not None:
+        _session_store.persist_turn(
+            request.session_id,
+            request.question,
+            response.answer,
+            response.sources,
+        )
 
     sources = [result.to_dict() for result in response.sources]
 
@@ -287,6 +310,11 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
                     "message": f"API rate limit — retrying{retry_sec}",
                 })
 
+    # Resolve per-session memory for streaming
+    session_memory = None
+    if request.session_id and _session_store is not None:
+        session_memory = _session_store.get_memory(request.session_id)
+
     def _run() -> None:
         handler = _RateLimitLogHandler()
         handler.setLevel(logging.INFO)
@@ -294,10 +322,23 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
         root_logger = logging.getLogger()
         root_logger.addHandler(handler)
         try:
-            for event in _query_router.route_stream(
-                query=request.question, top_k=request.top_k
-            ):
+            stream_kwargs: dict = {"query": request.question, "top_k": request.top_k}
+            if session_memory is not None and hasattr(_query_router, "_memory"):
+                stream_kwargs["memory"] = session_memory
+            for event in _query_router.route_stream(**stream_kwargs):
                 event_queue.put(event)
+                # Persist turn to SQLite when streaming completes
+                if (
+                    event.get("step") == "done"
+                    and request.session_id
+                    and _session_store is not None
+                ):
+                    result = event.get("result", {})
+                    _session_store.persist_turn(
+                        request.session_id,
+                        request.question,
+                        result.get("answer", ""),
+                    )
         except Exception as exc:
             logger.error("Stream query failed: %s", exc, exc_info=True)
             exc_str = str(exc)

@@ -8,11 +8,18 @@ import html
 import json
 import os
 import random
+import uuid
 
 import streamlit as st
 import requests
 
 API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000")
+
+# ---------------------------------------------------------------------------
+# Per-browser session ID (persisted via cookie, falls back to session_state)
+# ---------------------------------------------------------------------------
+if "session_id" not in st.session_state:
+    st.session_state["session_id"] = str(uuid.uuid4())
 
 # ---------------------------------------------------------------------------
 # Example questions — drawn from the documents in docs/
@@ -799,7 +806,12 @@ if search_clicked and question.strip():
         try:
             with requests.post(
                 f"{API_BASE}/query/stream",
-                json={"question": question.strip(), "top_k": top_k, "strategy": strategy},
+                json={
+                    "question": question.strip(),
+                    "top_k": top_k,
+                    "strategy": strategy,
+                    "session_id": st.session_state["session_id"],
+                },
                 stream=True,
                 timeout=180,
             ) as _resp:

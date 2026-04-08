@@ -1,6 +1,7 @@
 """FastAPI application entry point."""
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
@@ -18,6 +19,7 @@ from src.agent.intent_classifier import IntentClassifier
 from src.agent.router import QueryRouter
 from src.agent.plan_and_execute import PlanAndExecuteRouter
 from src.agent.memory import ConversationMemory
+from src.agent.session_store import SessionStore
 from src.ingestion.pipeline import IngestionPipeline
 from src.api.routes import router, set_dependencies
 
@@ -94,6 +96,8 @@ def create_app() -> FastAPI:
             translate_query=settings.translate_query,
         )
 
+    session_store = SessionStore(db_path=os.environ.get("SESSION_DB_PATH", "./data/sessions.db"))
+
     set_dependencies(
         query_router=query_router,
         ingestion_pipeline=IngestionPipeline(
@@ -106,6 +110,7 @@ def create_app() -> FastAPI:
         vector_store=vector_store,
         bm25_search=bm25_search,
         settings=settings,
+        session_store=session_store,
     )
 
     application.include_router(router)
