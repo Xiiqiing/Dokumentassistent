@@ -76,7 +76,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "og LLM-genererede svar med kildehenvisninger. LLM-laget er provider-agnostisk. "
             "To tilstande: en LangGraph Plan-and-Execute-agent (standard) med samtalehukommelse til komplekse forespørgsler, "
             "og en foruddefineret pipeline til lette modeller. Søgekvaliteten evalueres med RAGAS. "
-            'Vidensbasen indeholder <a href="https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs" target="_blank">Københavns Universitets regler og retningslinjer</a>. Prøv at stille et spørgsmål om den.'
+            'Vidensbasen indeholder <a href="https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs" target="_blank">eksempler på dokumenter</a> om universitetsregler og -forskrifter. Prøv at stille et spørgsmål om den.'
         ),
         "search_label": "Stil et spørgsmål om ... ",
         "search_placeholder": "F.eks.: Hvad er reglerne for behandling af personoplysninger?",
@@ -160,7 +160,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "Two modes: a LangGraph Plan-and-Execute agent (default) with conversation memory for complex multi-step queries, "
             "and a predefined pipeline for lightweight models. "
             "Retrieval quality is evaluated with RAGAS. "
-            'The knowledge base contains <a href="https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs" target="_blank">University of Copenhagen rules and regulations</a>. Try to ask a question about it.'
+            'The knowledge base contains <a href="https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs" target="_blank"> example documents</a> of university rules and regulations. Try to ask a question about it.'
         ),
         "search_label": "Ask a question ...",
         "search_placeholder": "E.g.: What are the rules for processing personal data?",
