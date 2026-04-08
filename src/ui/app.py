@@ -227,14 +227,13 @@ st.markdown('<meta name="robots" content="noindex, nofollow">', unsafe_allow_htm
 # Per-browser session ID — persisted in a cookie so chat history survives
 # page refreshes. Falls back to a freshly generated UUID if the cookie is
 # not yet readable (first visit, or before the JS component has initialised).
+#
+# CookieManager must be instantiated directly on every rerun (it cannot be
+# wrapped in @st.cache_resource because its constructor calls a widget
+# command). Streamlit treats it as the same widget across reruns thanks to
+# the stable `key` argument.
 # ---------------------------------------------------------------------------
-@st.cache_resource
-def _get_cookie_manager() -> stx.CookieManager:
-    """Return a singleton CookieManager (cached across reruns)."""
-    return stx.CookieManager(key="kuda_cookie_manager")
-
-
-_cookie_manager = _get_cookie_manager()
+_cookie_manager = stx.CookieManager(key="kuda_cookie_manager")
 _cookies = _cookie_manager.get_all()
 
 # CookieManager loads cookies asynchronously via a JS component. On the very
