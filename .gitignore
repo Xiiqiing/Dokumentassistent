@@ -23,6 +23,7 @@ CLAUDE.md
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # Qdrant local storage
 qdrant_data/
