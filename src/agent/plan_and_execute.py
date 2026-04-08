@@ -26,7 +26,7 @@ from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import create_react_agent
 
 from src.agent.memory import ConversationMemory
-from src.agent.tools import ToolResultStore, make_retrieval_tools
+from src.agent.tools import ToolResultStore, detect_document_languages, make_retrieval_tools
 from src.models import GenerationResponse, IntentType, PipelineDetails, QueryResult
 from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
@@ -145,6 +145,7 @@ class PlanAndExecuteRouter:
         vector_store: VectorStore,
         default_top_k: int = 5,
         memory: ConversationMemory | None = None,
+        document_languages: list[str] | None = None,
     ) -> None:
         """Initialise the Plan-and-Execute router.
 
@@ -158,6 +159,9 @@ class PlanAndExecuteRouter:
                 When provided, prior conversation history is injected into
                 planner and synthesizer prompts, and each completed turn
                 is automatically recorded.
+            document_languages: Optional pre-detected list of corpus
+                languages. When omitted, the router lazily detects them
+                from the vector store on first use via the LLM.
         """
         self._llm = llm
         self._hybrid_retriever = hybrid_retriever
@@ -165,6 +169,24 @@ class PlanAndExecuteRouter:
         self._vector_store = vector_store
         self._default_top_k = default_top_k
         self._memory = memory or ConversationMemory()
+        self._document_languages: list[str] | None = (
+            list(document_languages) if document_languages else None
+        )
+
+    def _ensure_document_languages(self) -> list[str]:
+        """Lazily detect and cache the document corpus languages via the LLM.
+
+        Returns:
+            List of detected language names (e.g. ``["Danish"]`` or
+            ``["Danish", "English"]``). Empty list when the corpus is empty
+            or no readable text could be sampled.
+        """
+        if self._document_languages is not None:
+            return self._document_languages
+        self._document_languages = detect_document_languages(self._vector_store, self._llm)
+        if self._document_languages:
+            logger.info("Detected document corpus languages: %s", self._document_languages)
+        return self._document_languages
 
     # ------------------------------------------------------------------
     # Node functions
@@ -217,6 +239,7 @@ class PlanAndExecuteRouter:
                 store,
                 self._default_top_k,
                 llm_chain=self._llm,
+                document_languages=self._ensure_document_languages(),
             )
             sub_agent = create_react_agent(self._llm, tools)
 

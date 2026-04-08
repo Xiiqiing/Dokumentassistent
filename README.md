@@ -17,7 +17,7 @@ Hosted on Hugging Face Spaces: [xq-dokumentassistent.hf.space](https://xq-dokume
 
 ## Dansk
 
-En produktionsklar RAG-applikation, der gør det muligt at stille spørgsmål til dokumenter på dansk og få svar med kildehenvisninger. Systemet er bygget på open source-komponenter (LangChain, LangGraph, Qdrant, Ollama) og kan køre helt lokalt uden eksterne API-kald. Det implementerer hybrid søgning med reranking, en Plan-and-Execute agent med samtalehukommelse, og RAGAS-baseret evaluering af svarkvaliteten.
+En produktionsklar RAG-applikation, der gør det muligt at stille spørgsmål til dokumenter på et hvilket som helst sprog og få svar med kildehenvisninger. Systemet er bygget på open source-komponenter (LangChain, LangGraph, Qdrant, Ollama) og kan køre helt lokalt uden eksterne API-kald. Det implementerer hybrid søgning med reranking, en Plan-and-Execute agent med samtalehukommelse, og RAGAS-baseret evaluering af svarkvaliteten.
 
 ### Funktioner
 
@@ -89,7 +89,7 @@ Se `.env.example` for konfiguration pr. provider.
 
 Demoen ligger på [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space).
 
-Prøv for eksempel disse spørgsmål på dansk.
+Prøv for eksempel disse spørgsmål på et hvilket som helst sprog.
 
 - "Hvad er KU's politik for brug af AI-værktøjer?"
 - "Hvilke regler gælder for brug af generativ AI i eksamen?"
@@ -187,7 +187,7 @@ docs/                      # eksempel-PDF'er eller tekster (KU AI-dokumenter)
 
 ## English
 
-A production-ready RAG application that lets users ask questions about documents in Danish and receive answers with source citations. The system is built on open source components (LangChain, LangGraph, Qdrant, Ollama) and can run fully local without any external API calls. It implements hybrid search with reranking, a Plan-and-Execute agent with conversation memory, and RAGAS-based evaluation of answer quality.
+A production-ready RAG application that lets users ask questions about Danish documents in any language and receive answers with source citations. The system is built on open source components (LangChain, LangGraph, Qdrant, Ollama) and can run fully local without any external API calls. It implements hybrid search with reranking, a Plan-and-Execute agent with conversation memory, and RAGAS-based evaluation of answer quality.
 
 ### Capabilities
 
@@ -259,7 +259,7 @@ See `.env.example` for per-provider configuration.
 
 The demo lives at [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space).
 
-Try asking these questions in Danish.
+Try asking these questions, or in your language.
 
 - "Hvad er KU's politik for brug af AI-værktøjer?"
 - "Hvilke regler gælder for brug af generativ AI i eksamen?"

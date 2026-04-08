@@ -69,6 +69,81 @@ class ToolResultStore:
     fused_results: list[QueryResult] = field(default_factory=list)
 
 
+def detect_document_languages(
+    vector_store: VectorStore,
+    llm: Runnable,
+    *,
+    max_documents: int = 5,
+    chunks_per_document: int = 2,
+    sample_chars: int = 2000,
+) -> list[str]:
+    """Detect all languages present in the document corpus via the LLM.
+
+    Samples chunks from up to ``max_documents`` distinct documents and asks the
+    LLM in a single call to identify every language present. Used by routers
+    so that intermediate retrieval queries can be phrased in the corpus
+    language(s) without hardcoding any specific language.
+
+    Args:
+        vector_store: VectorStore to sample chunks from.
+        llm: LLM runnable used for the single detection call.
+        max_documents: Maximum number of documents to sample from.
+        chunks_per_document: Chunks taken from each sampled document.
+        sample_chars: Cap on total sample text length sent to the LLM.
+
+    Returns:
+        List of detected language names in English (e.g. ``["Danish"]`` or
+        ``["Danish", "English"]``), preserving the order returned by the LLM.
+        Returns an empty list when the corpus is empty or no readable text
+        could be sampled (e.g. when the vector store is mocked in tests).
+    """
+    try:
+        ids = vector_store.list_document_ids()
+    except Exception:
+        return []
+    if not isinstance(ids, list) or not ids:
+        return []
+
+    samples: list[str] = []
+    for doc_id in ids[:max_documents]:
+        try:
+            chunks = vector_store.get_chunks_by_document_id(doc_id)
+        except Exception:
+            continue
+        if not isinstance(chunks, list):
+            continue
+        for c in chunks[:chunks_per_document]:
+            text = (getattr(c, "text", "") or "").strip()
+            if text:
+                samples.append(text)
+
+    sample_text = "\n---\n".join(samples)[:sample_chars].strip()
+    if not sample_text:
+        return []
+
+    prompt = (
+        "You are a language detector. The text samples below come from "
+        "different documents in a knowledge base. Identify ALL distinct "
+        "languages present across the samples (do not list a language more "
+        "than once). Reply with ONLY the language names in English, one per "
+        "line, no explanation.\n\n"
+        f"Samples:\n{sample_text}"
+    )
+    raw = _extract_content(llm.invoke(prompt))
+
+    seen: set[str] = set()
+    detected: list[str] = []
+    for line in raw.strip().splitlines():
+        name = line.strip().lstrip("-•*0123456789.) ").rstrip(".").strip()
+        if not name:
+            continue
+        name = name.capitalize()
+        if name.lower() not in seen:
+            seen.add(name.lower())
+            detected.append(name)
+    return detected
+
+
 def _merge_results(existing: list[QueryResult], new: list[QueryResult]) -> list[QueryResult]:
     """Merge two QueryResult lists by chunk_id, keeping the highest score.
 
@@ -117,6 +192,7 @@ def make_retrieval_tools(
     store: ToolResultStore,
     default_top_k: int = 5,
     llm_chain: Runnable | None = None,
+    document_languages: list[str] | None = None,
 ) -> list:
     """Create retrieval tools bound to the given components and result store.
 
@@ -133,10 +209,34 @@ def make_retrieval_tools(
         llm_chain: Optional LLM chain for tools that need generation
             (summarize_document, multi_query_search). When None, those
             tools are excluded from the returned list.
+        document_languages: Detected languages of the document corpus
+            (e.g. ``["Danish"]`` or ``["Danish", "English"]``). Used by
+            multi_query_search to phrase sub-queries in the corpus
+            language(s) for best BM25 recall. When None or empty, the
+            sub-query language is left unconstrained.
 
     Returns:
         List of LangChain tool callables ready for bind_tools / ToolNode.
     """
+    if document_languages:
+        if len(document_languages) == 1:
+            _lang_clause = (
+                f"The queries should be in {document_languages[0]} "
+                f"(the document base is {document_languages[0]})."
+            )
+        else:
+            _lang_list = ", ".join(document_languages)
+            _lang_clause = (
+                f"The document base contains multiple languages: {_lang_list}. "
+                f"For each sub-query, write it in whichever of these languages "
+                f"best matches the topic; mix languages across sub-queries if "
+                f"the topic is likely covered by documents in different languages."
+            )
+    else:
+        _lang_clause = (
+            "Write each sub-query in the language most likely used by the "
+            "underlying documents."
+        )
 
     # ------------------------------------------------------------------
     # Core search tool
@@ -317,8 +417,7 @@ def make_retrieval_tools(
             decompose_prompt = (
                 "You are a search query planner. Given a complex question, "
                 "decompose it into 2-4 simple, independent search queries that "
-                "together cover all aspects of the question. The queries should "
-                "be in Danish (since the document base is Danish).\n\n"
+                f"together cover all aspects of the question. {_lang_clause}\n\n"
                 "Reply with ONLY the queries, one per line, nothing else.\n\n"
                 f"Question: {question}"
             )

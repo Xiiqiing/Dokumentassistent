@@ -244,7 +244,7 @@ class TestQueryTranslation:
         retriever.search_detailed.assert_called_once_with("Hvad er reglerne?", top_k=3)
 
     def test_english_query_translated_for_retrieval(self, mock_components) -> None:
-        """English queries should be translated to Danish for retrieval."""
+        """English queries should be translated into the corpus language for retrieval."""
         classifier, retriever, reranker, llm_chain = mock_components
 
         results = [_make_query_result("ctx", 0.5)]
@@ -252,7 +252,10 @@ class TestQueryTranslation:
         reranker.rerank.return_value = results
         _setup_llm_chain_english(llm_chain, "Hvad er reglerne?", "The rules are...", intent="rag")
 
-        router = QueryRouter(classifier, retriever, reranker, llm_chain, translate_query=True)
+        router = QueryRouter(
+            classifier, retriever, reranker, llm_chain,
+            translate_query=True, document_languages=["Danish"],
+        )
         response = router.route("What are the rules?", top_k=3)
 
         # 3 invoke calls: combined detection + translation + generation

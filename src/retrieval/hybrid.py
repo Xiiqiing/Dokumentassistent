@@ -52,6 +52,11 @@ class HybridRetriever:
         self._dense_weight = dense_weight
         self._bm25_weight = bm25_weight
 
+    @property
+    def vector_store(self) -> VectorStore:
+        """Underlying vector store, exposed for callers that need corpus-level access."""
+        return self._vector_store
+
     def search(self, query: str, top_k: int) -> list[QueryResult]:
         """Execute hybrid search combining dense and sparse results.
 

@@ -20,6 +20,7 @@ from langgraph.graph import END, StateGraph
 
 from src.models import IntentType, GenerationResponse, PipelineDetails, QueryResult
 from src.agent.intent_classifier import IntentClassifier
+from src.agent.tools import detect_document_languages
 from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
 
@@ -138,6 +139,7 @@ class QueryRouter:
         llm_chain: Runnable,
         *,
         translate_query: bool = True,
+        document_languages: list[str] | None = None,
     ) -> None:
         """Initialize the query router.
 
@@ -147,16 +149,41 @@ class QueryRouter:
             reranker: Reranker instance.
             llm_chain: LLM chain (llm | StrOutputParser) for generation,
                 translation, and language detection.
-            translate_query: Whether to translate non-Danish queries to Danish
-                before retrieval. When False, language detection still runs for
-                the answer-language rule but no translation is performed.
+            translate_query: Whether to translate the user query into a
+                corpus language before BM25 retrieval when the query
+                language does not already match one of the corpus languages.
+                When False, no translation is performed.
+            document_languages: Optional pre-detected list of corpus
+                languages. When omitted, the router lazily detects them
+                from the vector store on first translation/generation via
+                the LLM.
         """
         self._intent_classifier = intent_classifier
         self._hybrid_retriever = hybrid_retriever
         self._reranker = reranker
         self._llm_chain = llm_chain
         self._translate_query_enabled = translate_query
+        self._document_languages: list[str] | None = (
+            list(document_languages) if document_languages else None
+        )
         self._graph = self._build_graph()
+
+    def _ensure_document_languages(self) -> list[str]:
+        """Lazily detect and cache the document corpus languages via the LLM.
+
+        Returns:
+            List of detected language names (e.g. ``["Danish"]`` or
+            ``["Danish", "English"]``). Empty list when the corpus is empty
+            or no readable text could be sampled.
+        """
+        if self._document_languages is not None:
+            return self._document_languages
+        self._document_languages = detect_document_languages(
+            self._hybrid_retriever.vector_store, self._llm_chain
+        )
+        if self._document_languages:
+            logger.info("Detected document corpus languages: %s", self._document_languages)
+        return self._document_languages
 
     def _detect_language_and_intent(self, query: str) -> tuple[str, IntentType]:
         """Detect the query language and classify intent in a single LLM call.
@@ -203,29 +230,49 @@ class QueryRouter:
         return detected, intent
 
     def _translate_query(self, query: str, detected_language: str) -> str:
-        """Translate the query to Danish if needed.
+        """Translate the query into a corpus language when needed.
+
+        BM25 needs token-level matches against the corpus, so when the user's
+        query language is not present in the corpus we translate it to the
+        primary corpus language. When the corpus contains the user's
+        language already (single- or multi-language corpus), no translation
+        is performed — the original query is used as-is.
 
         Args:
             query: The user's original query.
             detected_language: Detected language of the query.
 
         Returns:
-            The Danish retrieval query, or the original if already Danish.
+            The retrieval query, translated when necessary.
         """
-        if detected_language.lower() in ("danish", "dansk"):
+        doc_langs = self._ensure_document_languages()
+
+        # Without a known corpus language we cannot pick a translation target.
+        if not doc_langs:
+            return query
+
+        user_lang = detected_language.lower().strip()
+        doc_lang_set = {lang.lower() for lang in doc_langs}
+        # Accept the Danish autonym so legacy "dansk" detection still matches.
+        if user_lang == "dansk":
+            user_lang = "danish"
+
+        # Query already in one of the corpus languages → BM25 will work as-is.
+        if user_lang in doc_lang_set:
             return query
 
         if not self._translate_query_enabled:
             logger.info("Query translation disabled; using original query for retrieval")
             return query
 
+        target = doc_langs[0]
         translate_prompt = (
-            "Translate the following text to Danish. "
+            f"Translate the following text to {target}. "
             "Reply with ONLY the translated text, nothing else.\n\n"
             f"Text: {query}"
         )
         translated = _extract_content(self._llm_chain.invoke(translate_prompt))
-        logger.info("Translated query to Danish: %s", translated)
+        logger.info("Translated query to %s: %s", target, translated)
         return translated
 
     # ------------------------------------------------------------------
@@ -552,10 +599,21 @@ class QueryRouter:
 
         instruction = intent_instructions[intent]
 
+        doc_langs = self._ensure_document_languages()
+        if doc_langs:
+            corpus_clause = (
+                f"The context documents may be in {' or '.join(doc_langs)} — "
+                f"use them as reference but always reply in {user_language}."
+            )
+        else:
+            corpus_clause = (
+                f"The context documents may be in a different language — "
+                f"use them as reference but always reply in {user_language}."
+            )
         language_rule = (
             f"IMPORTANT: You MUST answer in {user_language}. "
             f"The user asked in {user_language}, so your entire response must be in {user_language}. "
-            f"The context documents may be in Danish — use them as reference but always reply in {user_language}."
+            f"{corpus_clause}"
         )
 
         return (
