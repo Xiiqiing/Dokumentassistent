@@ -264,9 +264,31 @@ elif "session_id" not in st.session_state:
 # ---------------------------------------------------------------------------
 # Analytics — Umami Cloud
 # ---------------------------------------------------------------------------
-st.html(
-    '<script async src="https://cloud.umami.is/script.js"'
-    ' data-website-id="cf6c908e-1236-4406-8c02-88aa7c9a0db2"></script>',
+# `st.html` injects via React's dangerouslySetInnerHTML, and scripts inserted
+# through innerHTML never execute (HTML5 spec). We instead use a tiny iframe
+# bootstrap (via components.html) that attaches the real Umami script to the
+# parent document, so analytics track the actual Streamlit page URL.
+import streamlit.components.v1 as components
+
+components.html(
+    """
+    <script>
+      (function () {
+        var doc = window.parent.document;
+        if (doc.querySelector('script[data-website-id="cf6c908e-1236-4406-8c02-88aa7c9a0db2"]')) {
+          return;
+        }
+        var s = doc.createElement('script');
+        s.async = true;
+        s.defer = true;
+        s.src = 'https://cloud.umami.is/script.js';
+        s.setAttribute('data-website-id', 'cf6c908e-1236-4406-8c02-88aa7c9a0db2');
+        doc.head.appendChild(s);
+      })();
+    </script>
+    """,
+    height=0,
+    width=0,
 )
 
 # ---------------------------------------------------------------------------
