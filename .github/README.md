@@ -3,177 +3,6 @@
 ## Live demo
 Hosted on Hugging Face Spaces: [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space)
 
-[Skip to English ↓](#english)
-
-## Dansk
-
-En RAG-applikation, der lader brugeren stille spørgsmål til dokumenter på et hvilket som helst sprog og få svar med kildehenvisninger. Systemet er bygget på open source-komponenter (LangChain, LangGraph, Qdrant, Ollama) og kan køre lokalt uden API-nøgler. Det bruger hybrid søgning med reranking, en Plan-and-Execute-agent med samtalehukommelse, og RAGAS-baseret evaluering af svarkvaliteten.
-
-### Funktioner
-
-| Område | Implementering |
-|---|---|
-| Ustruktureret data | PyMuPDF-parser, dansk og engelsk tekstrensning, tre opdelingsstrategier (fast størrelse, rekursiv, semantisk) |
-| Hybrid søgning | Qdrant til vektorsøgning kombineret med BM25, flettet med reciprocal rank fusion |
-| Reranking | Cross-encoder `mmarco-mMiniLMv2-L12-H384-v1` |
-| Agent-flows | Plan-and-Execute med seks værktøjer, ReAct-subagent og samtalehukommelse |
-| Evaluering | RAGAS-metrikker (faithfulness, answer relevancy, context precision) |
-| Sporbarhed | Hvert svar har kildehenvisninger med chunk-ID og sidenummer, samt struktureret logning |
-| Provider-abstraktion | Factory-mønster, der gør det muligt at skifte mellem Ollama, OpenAI, Azure OpenAI, Anthropic og Google GenAI uden at ændre forretningskoden |
-| Deployment | Docker Compose til lokal kørsel, Hugging Face Spaces til den offentlige demo |
-
-### Sådan fungerer det
-
-PDF-filer bliver læst med PyMuPDF, renset, opdelt i tekststykker (fast størrelse, rekursivt eller semantisk), indlejret med en flersproget sentence-transformer og gemt i Qdrant. Et BM25-indeks bygges på de samme tekststykker til nøgleordssøgning.
-
-Når en bruger stiller et spørgsmål, kører systemet både den semantiske og den leksikale søgning, fletter resultaterne sammen med reciprocal rank fusion, og lader en cross-encoder rescore kandidaterne. De øverste tekststykker bliver sendt til en LLM, og svaret streames tilbage via SSE og vises i Streamlit-grænsefladen sammen med kilderne.
-
-### To agent-tilstande
-
-Systemet kan køre i to forskellige tilstande, der vælges via miljøvariablen `AGENT_MODE`.
-
-**Pipeline** (`AGENT_MODE=pipeline`) er en fast LangGraph-DAG, der kører sprogdetektion, valgfri oversættelse, hybrid søgning, reranking, generering, plus en confidence-baseret retry-loop. Den fungerer fint med små lokale modeller, der ikke understøtter tool calling.
-
-**Plan-and-Execute-agent** (`AGENT_MODE=react`, standard) er flertrinet: en planner nedbryder først spørgsmålet i delopgaver, en executor kører hver delopgave gennem en ReAct-subagent med adgang til værktøjerne nedenfor, og en synthesizer samler resultaterne til ét svar med kildehenvisninger. Den bruger samtalehukommelse til opfølgende spørgsmål og kræver en model, der understøtter tool calling.
-
-| Værktøj | Formål |
-|---|---|
-| `hybrid_search(query, top_k)` | Henter relevante tekststykker via hybrid søgning og reranking |
-| `multi_query_search(question, top_k)` | Nedbryder komplekse spørgsmål i delspørgsmål, søger på hver og fletter resultaterne |
-| `search_within_document(document_id, query, top_k)` | Finder bestemte afsnit i et kendt dokument |
-| `summarize_document(document_id)` | Laver et struktureret resumé af et dokument |
-| `list_documents()` | Viser hvilke dokumenter, der ligger i vidensbasen |
-| `fetch_document(document_id)` | Henter et helt dokument |
-
-### Produktionshensyn
-
-Hvert svar henviser tilbage til de tekststykker, det bygger på, med dokument-ID, sidenummer og selve teksten, så svarene kan kontrolleres bagefter. RAGAS-evalueringen i `src/evaluation/` måler faithfulness og context precision, så man kan opdage forringelser, før en ændring går i drift.
-
-Konfigurationen ligger i miljøvariabler via `src/config.py`; der er ingen hardkodede stier, modelnavne eller API-nøgler. Koden importerer aldrig en provider-SDK direkte — LLM- og embedding-backends hentes gennem `create_llm()` og `create_embeddings()`, så man kan skifte mellem Ollama, OpenAI og andre uden at røre den øvrige kode. Standardopsætningen kører lokalt uden eksterne API-kald.
-
-### Teknologivalg
-
-| Kategori | Teknologi |
-|---|---|
-| Framework | FastAPI, uvicorn |
-| Orkestrering | LangChain, LangGraph |
-| Vektorlager | Qdrant (lokal tilstand) |
-| Embedding | `paraphrase-multilingual-MiniLM-L12-v2` (384 dim) |
-| LLM | `gemma4:e4b` via Ollama som standard |
-| Sparse-søgning | rank_bm25 |
-| Reranking | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` |
-| PDF-parsing | PyMuPDF |
-| Evaluering | RAGAS |
-| Grænseflade | Streamlit |
-
-### Provider-understøttelse
-
-LLM- og embedding-backends konfigureres via miljøvariabler. De understøttede providers er Ollama, OpenAI, Azure OpenAI, Anthropic, Google GenAI og Groq. Standardopsætningen (Ollama og HuggingFace) kører helt lokalt uden API-nøgler.
-
-Se `.env.example` for konfiguration pr. provider.
-
-### Prøv den live
-
-Demoen ligger på [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space).
-
-Prøv disse spørgsmål — eller dine egne — på et hvilket som helst sprog.
-
-- "Hvad er KU's politik for brug af AI-værktøjer?"
-- "Hvilke regler gælder for brug af generativ AI i eksamen?"
-- "Sammenlign reglerne for AI-brug i forskning og undervisning."
-
-Det tredje spørgsmål udløser Plan-and-Execute-agenten, så man kan se den nedbryde spørgsmålet i delopgaver i realtid.
-
-### Kom i gang
-
-Kræver Python 3.11+ og [Ollama](https://ollama.com/).
-
-```bash
-git clone https://github.com/Xiiqiing/Dokumentassistent.git
-cd Dokumentassistent
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-
-ollama pull gemma4:e4b
-python -m scripts.ingest          # læg PDF-filer i docs/ først
-
-uvicorn src.api.main:app --reload  # http://localhost:8000
-streamlit run src/ui/app.py        # http://localhost:8501
-```
-
-### Docker
-
-Docker Compose håndterer Qdrant, API'et og Streamlit-grænsefladen samlet. API-containeren venter på, at Qdrant er oppe, og kører ingestion automatisk, hvis samlingen er tom.
-
-#### Lokalt setup med Ollama og HuggingFace
-
-```bash
-cp .env.example .env
-docker compose --profile local up --build
-```
-
-| Service | URL |
-|---|---|
-| API | http://localhost:8000 |
-| API-dokumentation | http://localhost:8000/docs |
-| Streamlit-grænseflade | http://localhost:8501 |
-| Qdrant-dashboard | http://localhost:6333/dashboard |
-
-#### Cloud-setup med OpenAI, Anthropic eller andre
-
-```bash
-cp .env.example .env
-# sæt LLM_PROVIDER, EMBEDDING_PROVIDER og din API-nøgle
-docker compose up --build
-```
-
-#### Hugging Face Spaces
-
-Et `Dockerfile` og en supervisor-konfiguration er inkluderet. Spacet kører Qdrant, API'et og grænsefladen bag nginx på port 7860.
-
-### Projektstruktur
-
-```
-src/
-  config.py                # konfiguration via miljøvariabler
-  provider.py              # create_llm() og create_embeddings() factory
-  models.py                # delte dataklasser
-  ingestion/
-    pdf_parser.py          # PyMuPDF-udtræk
-    text_cleaner.py        # dansk og engelsk normalisering
-    chunker.py             # fast størrelse, rekursiv og semantisk opdeling
-    pipeline.py            # ingestion-orkestrering
-  retrieval/
-    embedder.py
-    vector_store.py        # Qdrant
-    bm25_search.py
-    hybrid.py              # reciprocal rank fusion
-    reranker.py            # cross-encoder
-  api/
-    main.py
-    routes.py              # /query, /ingest, /health
-  agent/
-    intent_classifier.py
-    router.py              # pipeline-tilstand (AGENT_MODE=pipeline)
-    tools.py               # seks retrieval-værktøjer og ToolResultStore
-    plan_and_execute.py    # Plan-and-Execute-agent (AGENT_MODE=react)
-    memory.py              # samtalehukommelse til flere spørgsmål
-  evaluation/
-    evaluator.py           # RAGAS-metrikker
-  ui/
-    app.py                 # Streamlit-frontend
-scripts/
-  ingest.py
-  e2e_test.py
-tests/
-docs/                      # eksempel-PDF'er eller tekster (KU AI-dokumenter)
-```
-
----
-
-## English
-
 A RAG application that lets users ask questions about documents in any language and get answers with source citations. The system is built on open source components (LangChain, LangGraph, Qdrant, Ollama) and can run locally without API keys. It uses hybrid search with reranking, a Plan-and-Execute agent with conversation memory, and RAGAS-based evaluation of answer quality.
 
 ### Capabilities
@@ -199,9 +28,9 @@ At query time, both indexes are searched and the results merged with reciprocal 
 
 The system can run in two different modes, switchable via the `AGENT_MODE` environment variable.
 
-**Pipeline** (`AGENT_MODE=pipeline`) is a fixed LangGraph DAG that runs language detection, optional translation, hybrid retrieval, reranking, generation, and a confidence-based retry loop. It works well with small local models that don't support tool calling.
+**Pipeline** (`AGENT_MODE=pipeline`, default) is a fixed LangGraph DAG that runs language detection, optional translation, hybrid retrieval, reranking, generation, and a confidence-based retry loop. It is the default because it outperforms the Plan-and-Execute agent on every RAGAS metric on this corpus (see the evaluation results below). It also works with small local models that don't support tool calling.
 
-**Plan-and-Execute agent** (`AGENT_MODE=react`, default) is multi-step: a planner first decomposes the query into sub-tasks, an executor runs each sub-task through a ReAct sub-agent with access to the tools listed below, and a synthesizer combines the results into a single cited answer. It uses conversation memory for follow-up questions and requires a model that supports tool calling.
+**Plan-and-Execute agent** (`AGENT_MODE=react`) is multi-step: a planner first decomposes the query into sub-tasks, an executor runs each sub-task through a ReAct sub-agent with access to the tools listed below, and a synthesizer combines the results into a single cited answer. It uses conversation memory for follow-up questions and requires a model that supports tool calling. It remains available as an opt-in mode. Whether the planning loop helps on genuinely multi-document or comparative questions has not yet been measured. The auto-generated test set only covers single-document factual queries, and on those the simpler pipeline wins clearly.
 
 | Tool | Purpose |
 |---|---|
@@ -214,9 +43,25 @@ The system can run in two different modes, switchable via the `AGENT_MODE` envir
 
 ### Production considerations
 
-Every answer points back to the chunks it was built on, with document ID, page number and the chunk text itself, so answers can be checked after the fact. The RAGAS evaluation in `src/evaluation/` measures faithfulness and context precision, which lets you catch regressions before a change goes live.
+Every answer points back to the chunks it was built on, with document ID, page number and the chunk text itself, so answers can be checked after the fact. The RAGAS evaluation in `src/evaluation/` measures both *grounding* (faithfulness, context precision/recall) and *correctness* (answer correctness, factual correctness), which lets you catch regressions before a change goes live.
 
-Configuration lives in environment variables via `src/config.py`; there are no hardcoded paths, model names or API keys. The application code never imports a provider SDK directly — LLM and embedding backends are loaded through `create_llm()` and `create_embeddings()`, so you can switch between Ollama, OpenAI and others without touching the rest of the code. The default setup runs locally without any external API calls.
+Configuration lives in environment variables via `src/config.py`; there are no hardcoded paths, model names or API keys. The application code never imports a provider SDK directly. LLM and embedding backends are loaded through `create_llm()` and `create_embeddings()`, so you can switch between Ollama, OpenAI and others without touching the rest of the code. The default setup runs locally without any external API calls.
+
+### Evaluation results
+
+A 33-question English test set was run against the Danish PDF corpus across four router/chunking configurations, using `qwen/qwen3-32b` (Groq) for generation and `llama-3.3-70b-versatile` (Groq) as the RAGAS judge. Two metric families are reported: grounding (against retrieved chunks) and correctness (against an English reference answer).
+
+| Config | Chunking | Router | top_k | Faith | Ans.Rel | Ctx.Prec | Ctx.Recall | Ans.Corr | Fact.Corr |
+|---|---|---|---|---|---|---|---|---|---|
+| fixed_react | fixed_size | react | 5 | 0.463 | 0.640 | 0.651 | 0.659 | 0.353 | 0.179 |
+| recursive_react | recursive | react | 5 | 0.583 | 0.717 | 0.597 | 0.657 | 0.377 | 0.207 |
+| semantic_react | semantic | react | 5 | 0.633 | 0.692 | 0.640 | 0.737 | 0.343 | 0.180 |
+| **recursive_pipeline** | recursive | pipeline | 5 | **0.788** | **0.866** | **0.724** | **0.788** | **0.451** | **0.401** |
+
+- **The fixed pipeline beats Plan-and-Execute on every metric by 0.16–0.20 points.** The agent's synthesizer paraphrases retrieved content into longer answers (avg 656 vs 511 chars), introducing drift that hurts both grounding and correctness. Default `AGENT_MODE` was changed to `pipeline` based on this.
+- **`semantic_react` quietly fails**: highest faithfulness among react cells (0.633) but lowest factual correctness (0.180). Confidently quoting the wrong chunks looks faithful while still being wrong, which is why both metric families are needed.
+
+The test set is auto-generated and biased toward single-document factual questions; multi-document and comparative questions are not yet covered. Reproduce with `python -m scripts.evaluate --experiment all`.
 
 ### Tech stack
 
@@ -249,7 +94,7 @@ Try these questions, or ask one of your own in any language.
 - "Hvilke regler gælder for brug af generativ AI i eksamen?"
 - "Sammenlign reglerne for AI-brug i forskning og undervisning."
 
-The third question triggers the Plan-and-Execute agent, so you can watch it decompose the query into sub-tasks in real time.
+The third question triggers the Plan-and-Execute agent (when `AGENT_MODE=react` is set), so you can watch it decompose the query into sub-tasks in real time.
 
 ### Quick start
 

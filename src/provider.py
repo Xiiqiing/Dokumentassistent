@@ -5,6 +5,7 @@ interacts only with LangChain abstract interfaces returned by these factories.
 """
 
 import logging
+from dataclasses import replace
 
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -98,6 +99,56 @@ def create_llm(settings: Settings) -> BaseChatModel:
                 f"Unknown LLM provider: '{provider}'. "
                 f"Supported providers: {_SUPPORTED_LLM_PROVIDERS}"
             )
+
+
+_EVALUATOR_MODEL_FIELD: dict[str, str] = {
+    "groq": "groq_model",
+    "openai": "openai_model",
+    "anthropic": "anthropic_model",
+    "google_genai": "google_model",
+    "azure_openai": "azure_openai_deployment",
+    "ollama": "ollama_model",
+}
+
+
+def create_evaluator_llm(settings: Settings) -> BaseChatModel:
+    """Create the LLM used as a RAGAS judge.
+
+    The judge LLM is independent of the generation LLM so a strong cloud
+    model (e.g. Qwen3-32B via Groq) can score outputs produced by a small
+    local generation model. If ``EVALUATOR_LLM_PROVIDER`` is unset, falls
+    back to ``create_llm(settings)`` which reuses the generation LLM.
+
+    Args:
+        settings: Application settings with provider configuration.
+
+    Returns:
+        A LangChain BaseChatModel instance to use as the RAGAS judge.
+
+    Raises:
+        ValueError: If ``EVALUATOR_LLM_PROVIDER`` is set to an unknown value.
+    """
+    provider = settings.evaluator_llm_provider.lower().strip()
+    if not provider:
+        logger.info("EVALUATOR_LLM_PROVIDER unset; reusing generation LLM as judge")
+        return create_llm(settings)
+
+    overrides: dict[str, str] = {"llm_provider": provider}
+    if settings.evaluator_llm_model:
+        model_field = _EVALUATOR_MODEL_FIELD.get(provider)
+        if model_field is None:
+            raise ValueError(
+                f"Cannot override evaluator model for unknown provider: '{provider}'"
+            )
+        overrides[model_field] = settings.evaluator_llm_model
+
+    overridden = replace(settings, **overrides)
+    logger.info(
+        "Creating evaluator (judge) LLM with provider: %s | model override: %s",
+        provider,
+        settings.evaluator_llm_model or "(provider default)",
+    )
+    return create_llm(overridden)
 
 
 def create_embeddings(settings: Settings) -> Embeddings:

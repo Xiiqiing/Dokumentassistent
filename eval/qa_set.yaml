@@ -1,0 +1,383 @@
+meta:
+  generator: scripts/generate_qa_set.py
+  llm_provider: groq
+  llm_model: qwen/qwen3-32b
+  total_candidates: 33
+  verified_quotes: 33
+questions:
+- question: When will the use of generative AI (GAI) be allowed by default at the University of Copenhagen
+    for all exam forms?
+  reference_en: From the autumn of 2025, the use of generative AI (GAI) will be allowed by default for
+    all exam forms where the course description states 'all aids allowed'.
+  source_quote_da: Fra efteråret 2025 vil anvendelse af generativ AI (GAI) være tilladt ved alle eksamensformer
+    (inkl. hjemmeopgaver, BA-projekter og specialer), hvor der i kursusbeskrivelsen står "alle hjælpemidler
+    tilladt".
+  source_doc: DAN_Infobrev_til_censorer_om_GAI_til_eksamen_p__KU_final_maj2025.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is the responsibility of the student regarding the use of GAI in their exam performance?
+  reference_en: The student is solely responsible for the content and form of their exam performance,
+    regardless of whether or not GAI has been used.
+  source_quote_da: Indhold og form i eksamenspræstationer er uanset hjælpemiddel alene den studerendes
+    ansvar.
+  source_doc: DAN_Infobrev_til_censorer_om_GAI_til_eksamen_p__KU_final_maj2025.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: definition
+  quote_verified: true
+  reviewed: true
+- question: Which regulation outlines the rules for part-time access to full-time university education?
+  reference_en: The regulation outlining the rules for part-time access to full-time university education
+    is the 'Universitetsadgangsbekendtgørelsen' (University Access Regulation) from January 14, 2024.
+  source_quote_da: Bekendtgørelse nr. 51 af 14. januar 2024 om adgang til universitetsuddannelser tilrettelagt
+    på heltid (Universitetsadgangsbekendtgørelsen)
+  source_doc: Faelles_del_af_studieordningerne_2024-25.pdf
+  source_page_start: 1
+  source_page_end: 2
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: How many ECTS points is a bachelor's degree at the Faculty of Science and Technology normally
+    standardized to?
+  reference_en: A bachelor's degree is standardized to 180 ECTS points, corresponding to 3 years of study.
+  source_quote_da: Bacheloruddannelser er normeret til 180 ECTS-point svarende til 3 års studier.
+  source_doc: Faelles_del_af_studieordningerne_2024-25.pdf
+  source_page_start: 3
+  source_page_end: 6
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is the maximum allowed study period for a bachelor's degree in Food Engineering including
+    the mandatory 6-month internship?
+  reference_en: The total study period for Food Engineering bachelor students, including the mandatory
+    6-month internship, may not exceed 4.5 years (54 months).
+  source_quote_da: For fødevareingeniørstuderende, der tager et halvt års obligatorisk praktik i løbet
+    af studietiden, må den samlede studietid ikke overstige 4½ år (54 måneder).
+  source_doc: Faelles_del_af_studieordningerne_2024-25.pdf
+  source_page_start: 3
+  source_page_end: 6
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is the consequence if a student fails the study start exam after two attempts?
+  reference_en: If the student has not passed the study start exam after two attempts, they will be withdrawn
+    from the program without further notice.
+  source_quote_da: Hvis den studerende ikke har bestået prøven efter andet prøveforsøg, udskrives den
+    studerende af uddannelsen uden yderligere varsel.
+  source_doc: Faelles_del_af_studieordningerne_2024-25.pdf
+  source_page_start: 7
+  source_page_end: 9
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is the maximum number of ECTS points that projects can contribute to the business candidate
+    degree?
+  reference_en: Projects, including the thesis and other project-based elements, may never exceed 90 ECTS
+    points in the business candidate degree.
+  source_quote_da: Speciale, specialeforberedende projekter, projekter uden for kursusregi og virksomhedsprojekter
+    må samlet aldrig udgøre mere end 90 ECTS-point af erhvervskandidatuddannelsen.
+  source_doc: Faelles_del_af_studieordningerne_2024-25.pdf
+  source_page_start: 7
+  source_page_end: 9
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What support is available to employees who are being considered for dismissal or are in the
+    notice period?
+  reference_en: Employees being considered for dismissal or in the notice period can receive support such
+    as having their CV distributed to relevant units at KU, having someone available as a reference,
+    being put in contact with internal and external partners, and being informed about the possibility
+    of crisis help from an external psychologist.
+  source_quote_da: 'Det kan fx ske ved at: • distribuere CV til relevante enheder på KU • stille sig til
+    rådighed som referenceperson • formidle kontakt til interne og eksterne samarbejdsparterer • oplyse
+    om muligheden for krisehjælp ved ekstern psykolog mv.'
+  source_doc: KU_s-retningslinjer-for-uans_gt-afsked-begrundet-i-institutionens-forhold.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: procedural
+  quote_verified: true
+  reviewed: true
+- question: Who is responsible for making a decision on unsolicited dismissal of civil servants according
+    to the text?
+  reference_en: The decision on unsolicited dismissal of civil servants is made by the ministry of the
+    relevant portfolio after a recommendation from the rector.
+  source_quote_da: Beslutning om uansøgt afsked træffes af ressortministeriet efter indstilling fra rektor.
+  source_doc: KU_s-retningslinjer-for-uans_gt-afsked-begrundet-i-institutionens-forhold.pdf
+  source_page_start: 4
+  source_page_end: 4
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is the notice period required for terminating established guidelines according to the
+    cooperation committee circular?
+  reference_en: According to the cooperation committee circular, a notice period of 3 months is required
+    for terminating established guidelines.
+  source_quote_da: hver af parterne kan opsige fastlagte retningslinjer med 3 måneders varsel.
+  source_doc: KU_s-retningslinjer-for-uans_gt-afsked-begrundet-i-institutionens-forhold.pdf
+  source_page_start: 4
+  source_page_end: 4
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is considered unacceptable behavior under the university's order rules?
+  reference_en: Unacceptable behavior includes, but is not limited to, threatening or violent behavior,
+    cheating, disturbing teaching, vandalism, and harassment.
+  source_quote_da: Forhold, der udgør uacceptabel adfærd, og derved en overtrædelse af ordensreglerne,
+    omfatter bl.a. a) Chikanerende, truende eller voldelig adfærd b) Dokumentfalsk c) Eksamenssnyd d)
+    Forstyrrelse af undervisningen og støjende adfærd e) Hærværk f) Krænkelse af immaterielle rettigheder
+    g) Krænkende handlinger som f.eks. mobning, nedværdigelse, seksuel chikane
+  source_doc: Ordensregler___vejledning_af_1._marts_2023.pdf
+  source_page_start: 1
+  source_page_end: 6
+  category: definition
+  quote_verified: true
+  reviewed: true
+- question: Under what circumstances may the dean expel a student from social events held by the faculty
+    according to § 18?
+  reference_en: According to § 18, the dean may expel a student from social events held by the faculty
+    if it is assessed that further expulsion from the faculty or university is not necessary.
+  source_quote_da: § 18. Dekanen kan i medfør af § 14, nr. 2, bortvise den studerende fra sociale arrangementer
+    afholdt på fakultetet, såfremt det vurderes, at yderligere bortvisning fra fakultetet eller universitetet
+    ikke er nødvendigt.
+  source_doc: Ordensregler___vejledning_af_1._marts_2023.pdf
+  source_page_start: 7
+  source_page_end: 11
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is the deadline for submitting an appeal against a decision under the rules?
+  reference_en: The deadline for submitting an appeal is two weeks from the day the decision is communicated
+    to the complainant.
+  source_quote_da: Stk. 3. Fristen for indgivelse af klage er to uger fra den dag, afgørelsen er meddelt
+    klageren.
+  source_doc: Ordensregler___vejledning_af_1._marts_2023.pdf
+  source_page_start: 7
+  source_page_end: 11
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is considered self-plagiarism according to the document?
+  reference_en: Self-plagiarism occurs when a student reuses their own previously submitted work without
+    citing themselves as the source.
+  source_quote_da: Hvis den studerende refererer eller skriver af fra sit eget arbejde, er der tale om
+    selvplagiat (autocitat), hvis ikke den studerende henviser til sig selv som kilde.
+  source_doc: Ordensregler___vejledning_af_1._marts_2023.pdf
+  source_page_start: 12
+  source_page_end: 15
+  category: definition
+  quote_verified: true
+  reviewed: true
+- question: What is the consequence of being found guilty of academic fraud during an exam?
+  reference_en: If a student is found guilty of academic fraud during an exam, the exam answer will not
+    be assessed, will be administratively assigned the lowest grade, and the student will be registered
+    as having used an exam attempt.
+  source_quote_da: Hvis den studerende bliver bortvist fra eksamenen, bliver eksamensbesvarelsen ikke
+    bedømt, eksamensbesvarelsen bliver administrativt tildelt laveste karakter, og den studerende bliver
+    registreret for et brugt eksamensforsøg.
+  source_doc: Ordensregler___vejledning_af_1._marts_2023.pdf
+  source_page_start: 12
+  source_page_end: 15
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: When does the academic year at the University of Copenhagen start and end according to the
+    document?
+  reference_en: The academic year at the University of Copenhagen runs from week 36 of one year to week
+    35 of the following year.
+  source_quote_da: Året regnes i denne sammenhæng fra uge 36 det ene år til uge 35 det følgende år.
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 1
+  source_page_end: 4
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is the duration of the summer period according to the document?
+  reference_en: The summer period lasts from week 26 to week 35.
+  source_quote_da: Sommerperioden er uge 26 til uge 35.
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 1
+  source_page_end: 4
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is the purpose of the Joker-skemagruppe D?
+  reference_en: The Joker-skemagruppe D is used for smaller fagelementer with flexible scheduling needs
+    that can be aligned with skemagruppe D's status as a Joker-skemagruppe.
+  source_quote_da: 'Joker-skemagruppen D: I denne skemagruppe kan lægges mindre fagelementer, der har
+    fleksible skemabehov, som kan afpasses med skemagruppe D’s status som Joker-skemagruppe, se nedenfor.'
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 5
+  source_page_end: 9
+  category: definition
+  quote_verified: true
+  reviewed: true
+- question: What is the time frame for the first semester (Blok 1) in the academic year 2023/24?
+  reference_en: The first semester (Blok 1) in the academic year 2023/24 runs from week 36 to week 45.
+  source_quote_da: '1. semester
+
+    Blok 1
+
+    Uge 36 til og med uge 45
+
+    Første undervisningsdag:
+
+    4/9'
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 5
+  source_page_end: 9
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is the first teaching day of Block 1 in the academic year 2024-2025?
+  reference_en: The first teaching day of Block 1 is September 2nd.
+  source_quote_da: 'Første undervisningsdag: 2/9'
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 10
+  source_page_end: 10
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: When is the Easter holiday during the academic year 2024-2025?
+  reference_en: The Easter holiday is from April 17th to 21st.
+  source_quote_da: 'Påske: 17-21/4'
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 10
+  source_page_end: 10
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: Who is responsible for handling complaints against employees or managers at KU?
+  reference_en: Complaints are submitted to the authorized line manager, according to the guidelines for
+    the rector's delegation of management authority.
+  source_quote_da: Klage indgives til den ansættelsesbemyndigede leder, jf. retningslinjer for rektors
+    delegation af ledelseskompetence.
+  source_doc: Retningslinjer_for_behandling_af_klager_over_medarbejdere_og_ledere.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is the role of a trust representative in the complaint process?
+  reference_en: Employees can confidentially contact their trust representative for advice if they feel
+    uncertain about contacting management.
+  source_quote_da: Hvis en medarbejder føler sig usikker ved at kontakte ledelsen, kan medarbejderen i
+    fortrolighed rådføre sig med sin tillidsrepræsentant.
+  source_doc: Retningslinjer_for_behandling_af_klager_over_medarbejdere_og_ledere.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: procedural
+  quote_verified: true
+  reviewed: true
+- question: What is the effective date of the guidelines for the use of Generative Artificial Intelligence
+    (GAI) at Roskilde University?
+  reference_en: The guidelines for the use of Generative Artificial Intelligence (GAI) at Roskilde University
+    take effect on September 1, 2025.
+  source_quote_da: Disse retningslinjer træder i kraft den 1. sept. 2025.
+  source_doc: Retningslinjer_for_brug_af_generativ_kunstig_intelligens_i_skriftlige_afleveringer_til_eksamener.pdf
+  source_page_start: 2
+  source_page_end: 2
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What are the consequences of violating the GAI guidelines at Roskilde University?
+  reference_en: Violating the GAI guidelines at Roskilde University constitutes academic fraud and may
+    result in disciplinary action, including warnings or expulsion from the university.
+  source_quote_da: Hvis du overtræder reglerne som angivet under 'Generelle retningslinjer', begår du
+    eksamenssnyd og overtræder Regler om disciplinære foranstaltninger over for studerende ved Roskilde
+    Universitet. Der vil derfor kunne blive rejst en disciplinærsag mod dig. Sagen kan munde ud i sanktioner
+    som advarsel eller bortvisning fra RUC enten for en periode eller permanent.
+  source_doc: Retningslinjer_for_brug_af_generativ_kunstig_intelligens_i_skriftlige_afleveringer_til_eksamener.pdf
+  source_page_start: 1
+  source_page_end: 2
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What is the effective date of the study regulations?
+  reference_en: The study regulations become effective on September 1, 2024.
+  source_quote_da: Ikrafttræden 1. september 2024
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 1
+  source_page_end: 4
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What happens if a student does not obtain a course certificate by the end of a course?
+  reference_en: If a student does not obtain a course certificate by the end of a course, the instructor
+    may later inform the Department of Education and Students that the certificate has been obtained,
+    but this must happen no later than 10 days before any ordinary or re-examination.
+  source_quote_da: Opnår den studerende ikke kursusattest ved kursets afslutning, kan underviseren senere
+    meddele Afdelingen for Uddannelse og Studerende, at kursusattest efterfølgende er opnået. Sådan meddelelse
+    skal ske senest 10 dage før afholdelsen af en eventuel ordinær eksamen eller reeksamen.
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 1
+  source_page_end: 4
+  category: procedural
+  quote_verified: true
+  reviewed: true
+- question: What is the deadline for students to withdraw from courses placed in Block 5?
+  reference_en: Students must withdraw from courses placed in Block 5 by June 1st, sending an email to
+    summercourses@sund.ku.dk.
+  source_quote_da: Afmelding af kurser, som er placeret i blok 5, skal ske senest 1. juni til summercourses@sund.ku.dk.
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 5
+  source_page_end: 7
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: Where can students find the registration periods for their courses?
+  reference_en: Students can find the registration periods on the Study Information Pages at www.KUnet.dk.
+  source_quote_da: Tilmeldingsperioderne findes på Studieinformationssiderne på www.KUnet.dk.
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 5
+  source_page_end: 7
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: What must a student do immediately after falling ill during an exam, according to the policy?
+  reference_en: The student ends the exam by selecting the submission form 'Forladt eksamen pga. sygdom
+    opstået under eksamen' in Digital Eksamen.
+  source_quote_da: Den studerende afslutter eksamen ved i Digital Eksamen at vælge afleveringsformen ”Forladt
+    eksamen pga.. sygdom opstået under eksamen”.
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 8
+  source_page_end: 11
+  category: procedural
+  quote_verified: true
+  reviewed: true
+- question: What is the deadline for submitting a medical certificate after falling ill during an exam?
+  reference_en: The student must submit a medical certificate to the Department of Education and Students
+    within 5 business days after the exam.
+  source_quote_da: Den studerende skal omgående søge læge og fremsende en lægeerklæring, der skal være
+    Afdelingen for Uddannelse og Studerende i hænde senest 5 hverdage efter den pågældende eksamen.
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 8
+  source_page_end: 11
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: Who is responsible for ensuring that employee development talks (MUS) are conducted at the
+    University of Copenhagen?
+  reference_en: The leader with responsibility for personnel management in a given unit is responsible
+    for ensuring that employee development talks (MUS) are conducted with all employees in the unit.
+  source_quote_da: Dette indebærer, at enhver leder med ansvar for personaleledelsen i en given enhed1
+    har ansvar for, at der gennemføres medarbejderudviklingssamtaler med alle enhedens medarbejdere.
+  source_doc: mus_retningslinjer.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: fact
+  quote_verified: true
+  reviewed: true
+- question: Where must management discuss any delegation of MUS responsibilities, and on what basis?
+  reference_en: Management must discuss any delegation and its content in the local cooperation committee,
+    based on a written proposal.
+  source_quote_da: Ledelsen drøfter i det lokale samarbejdsudvalg en eventuel delegation og indholdet
+    heraf (drøftelsen skal foregå ud fra et skriftligt oplæg).
+  source_doc: mus_retningslinjer.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: procedural
+  quote_verified: true
+  reviewed: true

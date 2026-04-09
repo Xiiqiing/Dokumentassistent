@@ -18,6 +18,12 @@ class Settings:
     llm_provider: str
     embedding_provider: str
 
+    # Evaluator (RAGAS judge) — independent of generation LLM so a strong
+    # cloud judge can score outputs from a small local generation model.
+    # Empty evaluator_llm_provider means "reuse the generation LLM".
+    evaluator_llm_provider: str
+    evaluator_llm_model: str
+
     # General
     qdrant_path: str
     qdrant_url: str
@@ -99,6 +105,10 @@ def load_settings() -> Settings:
         # Provider selection
         llm_provider=os.environ.get("LLM_PROVIDER", "ollama"),
         embedding_provider=os.environ.get("EMBEDDING_PROVIDER", "local"),
+
+        # Evaluator (RAGAS judge) — empty provider means "reuse generation LLM"
+        evaluator_llm_provider=os.environ.get("EVALUATOR_LLM_PROVIDER", ""),
+        evaluator_llm_model=os.environ.get("EVALUATOR_LLM_MODEL", ""),
 
         # General
         qdrant_path=os.environ.get("QDRANT_PATH", "./qdrant_data"),

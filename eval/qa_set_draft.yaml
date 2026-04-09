@@ -1,0 +1,417 @@
+meta:
+  generator: scripts/generate_qa_set.py
+  llm_provider: groq
+  llm_model: qwen/qwen3-32b
+  total_candidates: 36
+  verified_quotes: 35
+questions:
+- question: When will the use of generative AI (GAI) be allowed by default at the University of Copenhagen?
+  reference_en: From the autumn of 2025, the use of generative AI (GAI) will be allowed by default in
+    all forms of exams where the course description states 'all aids allowed'.
+  source_quote_da: Fra efteråret 2025 vil anvendelse af generativ AI (GAI) være tilladt ved alle eksamensformer
+    (inkl. hjemmeopgaver, BA-projekter og specialer), hvor der i kursusbeskrivelsen står "alle hjælpemidler
+    tilladt".
+  source_doc: DAN_Infobrev_til_censorer_om_GAI_til_eksamen_p__KU_final_maj2025.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the responsibility of the student regarding the use of GAI in their exam performance?
+  reference_en: The student is solely responsible for the content and form of their exam performance,
+    regardless of whether or not GAI has been used.
+  source_quote_da: Indhold og form i eksamenspræstationer er uanset hjælpemiddel alene den studerendes
+    ansvar.
+  source_doc: DAN_Infobrev_til_censorer_om_GAI_til_eksamen_p__KU_final_maj2025.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: definition
+  quote_verified: true
+  reviewed: false
+- question: Which decree regulates the structure of bachelor's, master's, and business master's programs
+    at the Faculty of Science and BioScience at the University of Copenhagen?
+  reference_en: The structure of bachelor's, master's, and business master's programs is regulated by
+    the decree titled 'Den fælles del af bachelor-, erhvervskandidat- og kandidatstudieordningerne for
+    uddannelserne ved Det Natur- og Biovidenskabelige Fakultet, Københavns Universitet'.
+  source_quote_da: Den fælles del af bachelor-, erhvervskandidat- og kandidatstudieordningerne for uddannelserne
+    ved Det Natur- og Biovidenskabelige Fakultet Københavns Universitet
+  source_doc: Faelles_del_af_studieordningerne_2024-25.pdf
+  source_page_start: 1
+  source_page_end: 2
+  category: definition
+  quote_verified: true
+  reviewed: false
+- question: Which decree outlines the rules for exams and assessments in university education?
+  reference_en: The decree that outlines the rules for exams and assessments in university education is
+    Bekendtgørelse nr. 2271 af 1. december 2021, titled 'eksamensbekendtgørelsen'.
+  source_quote_da: Bekendtgørelse nr. 2271 af 1. december 2021 om eksamener og prøver ved universitetsuddannelser
+    (eksamensbekendtgørelsen).
+  source_doc: Faelles_del_af_studieordningerne_2024-25.pdf
+  source_page_start: 1
+  source_page_end: 2
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: How many ECTS points is a standard bachelor's degree at the Faculty of Science and Technology
+    normed to?
+  reference_en: A standard bachelor's degree is normed to 180 ECTS points, corresponding to 3 years of
+    study.
+  source_quote_da: Bacheloruddannelser er normeret til 180 ECTS-point svarende til 3 års studier.
+  source_doc: Faelles_del_af_studieordningerne_2024-25.pdf
+  source_page_start: 3
+  source_page_end: 6
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the maximum allowed study period for a standard master's degree?
+  reference_en: The maximum allowed study period for a standard master's degree is 3 years (36 months).
+  source_quote_da: Den samlede studietid for kandidatuddannelser må ikke overstige 3 år (36 måneder).
+  source_doc: Faelles_del_af_studieordningerne_2024-25.pdf
+  source_page_start: 3
+  source_page_end: 6
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the consequence if a student fails the study start exam after two attempts?
+  reference_en: If a student does not pass the study start exam after two attempts, they will be withdrawn
+    from the program without further notice.
+  source_quote_da: Hvis den studerende ikke har bestået prøven efter andet prøveforsøg, udskrives den
+    studerende af uddannelsen uden yderligere varsel.
+  source_doc: Faelles_del_af_studieordningerne_2024-25.pdf
+  source_page_start: 7
+  source_page_end: 9
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the maximum number of ECTS points that projects can contribute to the business candidate
+    education?
+  reference_en: Projects such as the thesis, thesis-preparatory projects, projects outside of course structure,
+    and company projects may collectively never exceed 90 ECTS points in the business candidate education.
+  source_quote_da: Speciale, specialeforberedende projekter, projekter uden for kursusregi og virksomhedsprojekter
+    må samlet aldrig udgøre mere end 90 ECTS-point af erhvervskandidatuddannelsen.
+  source_doc: Faelles_del_af_studieordningerne_2024-25.pdf
+  source_page_start: 7
+  source_page_end: 9
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the purpose of the orientation phase in the process of involuntary dismissal at KU?
+  reference_en: The purpose of the orientation phase is for management to inform the employee about the
+    situation and the planned dismissal, either by delivering a written notice or through verbal communication
+    that the employee will receive a formal notice about the planned dismissal.
+  source_quote_da: kort at orientere medarbejderen om situationen og om den påtænkte afskedigelse enten
+    ved udlevering af en skriftlig partshøring eller ved mundtlig orientering om, at medarbejderen efterfølgende
+    vil modtage en partshøring om påtænkt afskedigelse
+  source_doc: KU_s-retningslinjer-for-uans_gt-afsked-begrundet-i-institutionens-forhold.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: procedural
+  quote_verified: true
+  reviewed: false
+- question: What is the role of the trust representative during the mitigation phase of an involuntary
+    dismissal?
+  reference_en: The trust representative is responsible for supporting employees who are being considered
+    for dismissal or are in the notice period, including offering guidance and assistance in finding new
+    positions within KU.
+  source_quote_da: Tillidsrepræsentanten har et særligt ansvar for at bistå medarbejdere, der er indstillet
+    til afskedigelse/eller er blevet afskediget.
+  source_doc: KU_s-retningslinjer-for-uans_gt-afsked-begrundet-i-institutionens-forhold.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: definition
+  quote_verified: true
+  reviewed: false
+- question: Who is responsible for making a decision on unsolicited dismissal of civil servants according
+    to the document?
+  reference_en: The decision on unsolicited dismissal of civil servants is made by the ministry of the
+    relevant portfolio after a recommendation from the rector.
+  source_quote_da: Beslutning om uansøgt afsked træffes af ressortministeriet efter indstilling fra rektor.
+  source_doc: KU_s-retningslinjer-for-uans_gt-afsked-begrundet-i-institutionens-forhold.pdf
+  source_page_start: 4
+  source_page_end: 4
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the notice period required for terminating established guidelines according to the
+    cooperation committee circular?
+  reference_en: According to the cooperation committee circular, a notice period of 3 months is required
+    for terminating established guidelines.
+  source_quote_da: hver af parterne kan opsige fastlagte retningslinjer med 3 måneders varsel.
+  source_doc: KU_s-retningslinjer-for-uans_gt-afsked-begrundet-i-institutionens-forhold.pdf
+  source_page_start: 4
+  source_page_end: 4
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What are the consequences for a student who is found guilty of exam cheating?
+  reference_en: The consequences for a student found guilty of exam cheating include being given a warning,
+    being expelled from the specific exam, or being expelled from the university, either temporarily or
+    permanently.
+  source_quote_da: 'Rektor har i sager om eksamenssnyd følgende sanktionsmuligheder: 1) Tildeling af en
+    advarsel, jf. § 9, stk. 3 2) Bortvisning fra den pågældende eksamen, jf. § 10 3) Bortvisning fra universitetet,
+    jf. § 11'
+  source_doc: Ordensregler___vejledning_af_1._marts_2023.pdf
+  source_page_start: 1
+  source_page_end: 6
+  category: procedural
+  quote_verified: true
+  reviewed: false
+- question: What is considered unacceptable behavior according to the rules?
+  reference_en: Unacceptable behavior includes, but is not limited to, threatening or violent behavior,
+    document forgery, exam cheating, disturbing teaching, vandalism, and harassment such as bullying or
+    sexual harassment.
+  source_quote_da: Forhold, der udgør uacceptabel adfærd, og derved en overtrædelse af ordensreglerne,
+    omfatter bl.a. a) Chikanerende, truende eller voldelig adfærd b) Dokumentfalsk c) Eksamenssnyd d)
+    Forstyrrelse af undervisningen og støjende adfærd e) Hærværk f) Krænkelse af immaterielle rettigheder
+    g) Krænkende handlinger som f.eks. mobning, nedværdigelse, seksuel chikane
+  source_doc: Ordensregler___vejledning_af_1._marts_2023.pdf
+  source_page_start: 1
+  source_page_end: 6
+  category: definition
+  quote_verified: true
+  reviewed: false
+- question: What is the consequence of a student being expelled from social events according to § 18?
+  reference_en: According to § 18, the dean may expel a student from social events held by the faculty
+    if it is assessed that further expulsion from the university is not necessary.
+  source_quote_da: § 18. Dekanen kan i medfør af § 14, nr. 2, bortvise den studerende fra sociale arrangementer
+    afholdt på fakultetet, såfremt det vurderes, at yderligere bortvisning fra fakultetet eller universitetet
+    ikke er nødvendigt.
+  source_doc: Ordensregler___vejledning_af_1._marts_2023.pdf
+  source_page_start: 7
+  source_page_end: 11
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the deadline for submitting a complaint according to § 22, Stk. 3?
+  reference_en: According to § 22, Stk. 3, the deadline for submitting a complaint is two weeks from the
+    day the decision is communicated to the complainant.
+  source_quote_da: Stk. 3. Fristen for indgivelse af klage er to uger fra den dag, afgørelsen er meddelt
+    klageren.
+  source_doc: Ordensregler___vejledning_af_1._marts_2023.pdf
+  source_page_start: 7
+  source_page_end: 11
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is considered self-plagiarism according to the document?
+  reference_en: Self-plagiarism occurs when a student reuses their own previously submitted work without
+    citing themselves as the source. This includes reusing parts of a previous assignment, article, or
+    other texts they have written.
+  source_quote_da: Hvis den studerende refererer eller skriver af fra sit eget arbejde, er der tale om
+    selvplagiat (autocitat), hvis ikke den studerende henviser til sig selv som kilde.
+  source_doc: Ordensregler___vejledning_af_1._marts_2023.pdf
+  source_page_start: 12
+  source_page_end: 15
+  category: definition
+  quote_verified: true
+  reviewed: false
+- question: What is the consequence of being found guilty of academic fraud during an exam?
+  reference_en: If a student is found guilty of academic fraud during an exam, they may be expelled from
+    the exam, their submission will not be assessed, and it will be administratively assigned the lowest
+    possible grade.
+  source_quote_da: Hvis den studerende bliver bortvist fra eksamenen, bliver eksamensbesvarelsen ikke
+    bedømt, eksamensbesvarelsen bliver administrativt tildelt laveste karakter, og den studerende bliver
+    registreret for et brugt eksamensforsøg.
+  source_doc: Ordensregler___vejledning_af_1._marts_2023.pdf
+  source_page_start: 12
+  source_page_end: 15
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: When does the academic year at the University of Copenhagen start and end according to the
+    annual structure?
+  reference_en: The academic year at the University of Copenhagen runs from week 36 of one year to week
+    35 of the following year.
+  source_quote_da: Året regnes i denne sammenhæng fra uge 36 det ene år til uge 35 det følgende år.
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 1
+  source_page_end: 4
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the duration of the summer period according to the schedule structure?
+  reference_en: The summer period lasts from week 26 to week 35.
+  source_quote_da: Sommerperioden er uge 26 til uge 35.
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 1
+  source_page_end: 4
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the purpose of the 'joker group' (skemagruppe D)?
+  reference_en: Skemagruppe D is used as a 'joker group' for smaller fagelements with flexible scheduling
+    needs and can be used when there are difficulties fitting into skemagrupper A, B, or C.
+  source_quote_da: 'Joker-skemagruppen D: I denne skemagruppe kan lægges mindre fagelementer, der har
+    fleksible skemabehov, som kan afpasses med skemagruppe D’s status som Joker-skemagruppe, se nedenfor.'
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 5
+  source_page_end: 9
+  category: definition
+  quote_verified: true
+  reviewed: false
+- question: What are the typical hours for teaching and exams for full-time students?
+  reference_en: Teaching and exams for full-time students typically take place from 8:00 to 17:00 on weekdays.
+  source_quote_da: Undervisning og eksamen for fuldtidsstuderende foregår inden for de 36 ordinære uger.
+    Den fordeles på skemagrupperne A, B, C og D. Dvs. undervisning og eksamen afholdes normalt på hverdage
+    kl. 8.00 – 17.00.
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 5
+  source_page_end: 9
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the first teaching day of Block 1 in the academic year 2024-2025?
+  reference_en: The first teaching day of Block 1 is September 2nd.
+  source_quote_da: 'Første undervisningsdag: 2/9'
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 10
+  source_page_end: 10
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: When is the Easter holiday during the academic year 2024-2025?
+  reference_en: The Easter holiday is from April 17th to 21st.
+  source_quote_da: 'Påske: 17-21/4'
+  source_doc: Retningslinjer_for__rs-_og_skemastruktur_2020-2025_m._bilag.pdf
+  source_page_start: 10
+  source_page_end: 10
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: Who is responsible for handling complaints against employees or managers at KU?
+  reference_en: Complaints are submitted to the authorized line manager, according to the guidelines for
+    the rector's delegation of management authority.
+  source_quote_da: Klage indgives til den ansættelsesbemyndigede leder, jf. retningslinjer for rektors
+    delegation af ledelseskompetence.
+  source_doc: Retningslinjer_for_behandling_af_klager_over_medarbejdere_og_ledere.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the role of a trust representative in the complaint process?
+  reference_en: Employees can confidentially consult their trust representative if they feel uncertain
+    about contacting management.
+  source_quote_da: Hvis en medarbejder føler sig usikker ved at kontakte ledelsen, kan medarbejderen i
+    fortrolighed rådføre sig med sin tillidsrepræsentant.
+  source_doc: Retningslinjer_for_behandling_af_klager_over_medarbejdere_og_ledere.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: procedural
+  quote_verified: true
+  reviewed: false
+- question: When do the new guidelines for the use of Generative Artificial Intelligence (GAI) at Roskilde
+    University come into effect?
+  reference_en: The new guidelines for the use of Generative Artificial Intelligence (GAI) at Roskilde
+    University come into effect on September 1, 2025.
+  source_quote_da: 'DATO/REFERENCE: 1. sept. 2025.'
+  source_doc: Retningslinjer_for_brug_af_generativ_kunstig_intelligens_i_skriftlige_afleveringer_til_eksamener.pdf
+  source_page_start: 1
+  source_page_end: 2
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What are the general rules regarding the use of GAI during exams at Roskilde University?
+  reference_en: It is generally allowed to use GAI for projects, bachelor's theses, special projects,
+    portfolios, written assignments, and exams with 'Active, satisfactory (and regular) participation.'
+    However, it is not allowed during written in-class exams and oral exams, including oral project exams.
+  source_quote_da: Det er altid vigtigt at sikre en god akademisk praksis omkring GAI, og det skal være
+    helt tydeligt, når du som studerende skriver tekster som en del af din eksamen, hvor du er ansvarlig
+    for såvel form som indhold.
+  source_doc: Retningslinjer_for_brug_af_generativ_kunstig_intelligens_i_skriftlige_afleveringer_til_eksamener.pdf
+  source_page_start: 1
+  source_page_end: 2
+  category: procedural
+  quote_verified: true
+  reviewed: false
+- question: What is the effective date of the study regulations?
+  reference_en: The study regulations become effective on September 1, 2024.
+  source_quote_da: Ikrafttræden 1. september 2024
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 1
+  source_page_end: 4
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What happens if a student does not obtain a course certificate by the end of a course?
+  reference_en: If a student does not obtain a course certificate by the end of a course, the instructor
+    may later inform the Department of Education and Students that the certificate has been obtained,
+    but this must happen no later than 10 days before any ordinary or re-examination.
+  source_quote_da: Opnår den studerende ikke kursusattest ved kursets afslutning, kan underviseren senere
+    meddele Afdelingen for Uddannelse og Studerende, at kursusattest efterfølgende er opnået. Sådan meddelelse
+    skal ske senest 10 dage før afholdelsen af en eventuel ordinær eksamen eller reeksamen.
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 1
+  source_page_end: 4
+  category: procedural
+  quote_verified: true
+  reviewed: false
+- question: What is the deadline for students to withdraw from courses placed in Block 5?
+  reference_en: Students must withdraw from courses placed in Block 5 by June 1st, by sending an email
+    to summercourses@sund.ku.dk.
+  source_quote_da: Afmelding af kurser, som er placeret i blok 5, skal ske senest 1. juni til summercourses@sund.ku.dk.
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 5
+  source_page_end: 7
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: Where can students find the exam schedule and related deadlines?
+  reference_en: The exam schedule and related deadlines are published on the website www.sund.ku.dk.
+  source_quote_da: Eksamensplanerne offentliggøres på hjemmesiden www.sund.ku.dk
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 5
+  source_page_end: 7
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What must a student do immediately if they become ill during an exam, according to the policy?
+  reference_en: If a student becomes ill during a written exam, they must select the submission form 'Forladt
+    eksamen pga. sygdom opstået under eksamen' in Digital Eksamen and notify the supervising authority.
+  source_quote_da: Rammes en studerende under en skriftlig stedprøve af akut opstået sygdom, tilkaldes
+    den tilsynsførende, som orienteres om, at den pågældende studerende er blevet syg under eksamen. Den
+    studerende afslutter eksamen ved i Digital Eksamen at vælge afleveringsformen ”Forladt eksamen pga..
+    sygdom opstået under eksamen”.
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 8
+  source_page_end: 11
+  category: procedural
+  quote_verified: true
+  reviewed: false
+- question: What is the deadline for submitting a medical certificate for illness during an exam?
+  reference_en: A student must submit a medical certificate to the Department of Education and Students
+    within 5 business days after the exam.
+  source_quote_da: Stk. 2. Den studerende skal omgående søge læge og fremsende en lægeerklæring, der skal
+    være Afdelingen for Uddannelse og Studerende i hænde senest 5 hverdage efter den pågældende eksamen.
+  source_doc: Studieordningernes-faellesdel-ba-ka_2024-25.pdf
+  source_page_start: 8
+  source_page_end: 11
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: Who is responsible for ensuring that employee development talks (MUS) are conducted at the
+    University of Copenhagen?
+  reference_en: The person with formal management competence, such as a department head or operations
+    manager, is responsible for ensuring that employee development talks (MUS) are conducted.
+  source_quote_da: Ansvaret for afholdelse af MUS varetages af den, der har den formelle ledelseskompetence
+    (f.eks. institutleder eller driftschef).
+  source_doc: mus_retningslinjer.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: fact
+  quote_verified: true
+  reviewed: false
+- question: What is the process for delegating the responsibility of conducting MUS to intermediate managers?
+  reference_en: Leaders with formal management responsibility can delegate the task of conducting MUS
+    to intermediate managers, such as administrators or section leaders, but must define the associated
+    powers and discuss the delegation in the local cooperation committee.
+  source_quote_da: Ledere, til hvem et stort antal medarbejdere refererer, kan uddelegere MUS-opgaven
+    til relevante mellemledere, f.eks. administratorer eller område- eller sektionsledere. ... Ledelsen
+    drøfter i det lokale samarbejdsudvalg en eventuel delegation og indholdet heraf (drøftelsen skal foregå
+    ud fra et skriftligt oplæg).
+  source_doc: mus_retningslinjer.pdf
+  source_page_start: 1
+  source_page_end: 3
+  category: procedural
+  quote_verified: false
+  reviewed: false

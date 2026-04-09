@@ -41,3 +41,4 @@ requests==2.33.1
 # Utilities
 python-dotenv==1.2.2
 pydantic==2.12.5
+PyYAML==6.0.2
