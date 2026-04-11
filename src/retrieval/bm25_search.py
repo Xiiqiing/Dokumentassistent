@@ -17,6 +17,11 @@ class BM25Search:
         self._chunks: list[DocumentChunk] = []
         self._index: BM25Okapi | None = None
 
+    @property
+    def is_indexed(self) -> bool:
+        """Return True if the BM25 index has been built."""
+        return self._index is not None and len(self._chunks) > 0
+
     def index(self, chunks: list[DocumentChunk]) -> None:
         """Build the BM25 index from document chunks.
 

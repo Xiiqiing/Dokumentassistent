@@ -14,8 +14,8 @@ from src.config import Settings
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED_LLM_PROVIDERS = ["ollama", "azure_openai", "openai", "groq", "anthropic", "google_genai"]
-_SUPPORTED_EMBEDDING_PROVIDERS = ["local", "azure_openai", "openai", "google_genai"]
+_SUPPORTED_LLM_PROVIDERS = ["ollama", "azure_openai", "openai", "groq", "anthropic", "google_genai", "bedrock"]
+_SUPPORTED_EMBEDDING_PROVIDERS = ["local", "azure_openai", "openai", "google_genai", "bedrock"]
 
 
 def create_llm(settings: Settings) -> BaseChatModel:
@@ -94,6 +94,15 @@ def create_llm(settings: Settings) -> BaseChatModel:
                 temperature=0.0,
             )
 
+        case "bedrock":
+            from langchain_aws import ChatBedrockConverse
+
+            return ChatBedrockConverse(
+                model=settings.aws_bedrock_model,
+                region_name=settings.aws_region,
+                temperature=0.0,
+            )
+
         case _:
             raise ValueError(
                 f"Unknown LLM provider: '{provider}'. "
@@ -107,6 +116,7 @@ _EVALUATOR_MODEL_FIELD: dict[str, str] = {
     "anthropic": "anthropic_model",
     "google_genai": "google_model",
     "azure_openai": "azure_openai_deployment",
+    "bedrock": "aws_bedrock_model",
     "ollama": "ollama_model",
 }
 
@@ -198,6 +208,14 @@ def create_embeddings(settings: Settings) -> Embeddings:
             return GoogleGenerativeAIEmbeddings(
                 model=settings.google_embedding_model,
                 google_api_key=settings.google_api_key,
+            )
+
+        case "bedrock":
+            from langchain_aws import BedrockEmbeddings
+
+            return BedrockEmbeddings(
+                model_id=settings.aws_bedrock_embedding_model,
+                region_name=settings.aws_region,
             )
 
         case _:

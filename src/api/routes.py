@@ -172,13 +172,15 @@ class HealthResponse(BaseModel):
     embedding_model: str = ""
 
 
-@router.get("/health", response_model=HealthResponse)
-async def health_check() -> HealthResponse:
-    """Health check endpoint.
+class ReadinessResponse(BaseModel):
+    """Response body for the readiness probe."""
 
-    Returns:
-        HealthResponse with service status and version.
-    """
+    status: str
+    checks: dict[str, bool]
+
+
+def _build_health_response() -> HealthResponse:
+    """Build the full health response with provider details."""
     llm_provider = ""
     llm_model = ""
     embedding_provider = ""
@@ -191,6 +193,7 @@ async def health_check() -> HealthResponse:
             "ollama": _settings.ollama_model,
             "openai": _settings.openai_model,
             "azure_openai": _settings.azure_openai_deployment,
+            "bedrock": _settings.aws_bedrock_model,
             "groq": _settings.groq_model,
             "anthropic": _settings.anthropic_model,
             "google_genai": _settings.google_model,
@@ -204,6 +207,67 @@ async def health_check() -> HealthResponse:
         embedding_provider=embedding_provider,
         embedding_model=embedding_model,
     )
+
+
+@router.get("/health", response_model=HealthResponse)
+async def health_check() -> HealthResponse:
+    """Health check endpoint (backwards compatible).
+
+    Returns:
+        HealthResponse with service status and version.
+    """
+    return _build_health_response()
+
+
+@router.get("/health/live", response_model=HealthResponse)
+async def liveness() -> HealthResponse:
+    """Liveness probe. Returns 200 if the process is running.
+
+    Kubernetes uses this to decide whether to restart the container.
+    Does not check external dependencies.
+
+    Returns:
+        HealthResponse with service status and version.
+    """
+    return _build_health_response()
+
+
+@router.get("/health/ready", response_model=ReadinessResponse)
+async def readiness() -> ReadinessResponse:
+    """Readiness probe. Returns 200 only when all dependencies are available.
+
+    Kubernetes uses this to decide whether to route traffic to the pod.
+    Checks: vector store reachable, BM25 index loaded.
+
+    Returns:
+        ReadinessResponse with per-dependency check results.
+
+    Raises:
+        HTTPException: 503 if any dependency check fails.
+    """
+    checks: dict[str, bool] = {}
+
+    # Check vector store connectivity
+    try:
+        if _vector_store is not None:
+            _vector_store.get_all_chunks()[:0]  # lightweight probe
+            checks["vector_store"] = True
+        else:
+            checks["vector_store"] = False
+    except Exception:
+        logger.warning("Readiness check failed: vector store unreachable")
+        checks["vector_store"] = False
+
+    # Check BM25 index is loaded
+    checks["bm25_index"] = _bm25_search is not None and _bm25_search.is_indexed
+
+    # Check router is wired up
+    checks["router"] = _query_router is not None
+
+    all_ready = all(checks.values())
+    if not all_ready:
+        raise HTTPException(status_code=503, detail={"status": "unavailable", "checks": checks})
+    return ReadinessResponse(status="ready", checks=checks)
 
 
 @router.post("/query", response_model=QueryResponse)

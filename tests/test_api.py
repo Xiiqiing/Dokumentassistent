@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from src.api.routes import router, set_dependencies, QueryResponse, HealthResponse
+from src.api.routes import router, set_dependencies, QueryResponse, HealthResponse, ReadinessResponse
 from src.models import DocumentChunk, GenerationResponse, IntentType, QueryResult
 
 
@@ -63,6 +63,46 @@ class TestHealthCheck:
         body = response.json()
         assert body["status"] == "ok"
         assert body["version"] == "0.1.0"
+
+
+class TestLivenessProbe:
+    """Tests for the /health/live endpoint."""
+
+    def test_liveness_returns_ok(self, client: TestClient) -> None:
+        response = client.get("/health/live")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "ok"
+
+
+class TestReadinessProbe:
+    """Tests for the /health/ready endpoint."""
+
+    def test_readiness_returns_ready_when_all_deps_available(
+        self, client: TestClient, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        mock_deps["vector_store"].get_all_chunks.return_value = []
+        mock_deps["bm25_search"].is_indexed = True
+
+        response = client.get("/health/ready")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "ready"
+        assert body["checks"]["vector_store"] is True
+        assert body["checks"]["bm25_index"] is True
+        assert body["checks"]["router"] is True
+
+    def test_readiness_returns_503_when_bm25_not_indexed(
+        self, client: TestClient, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        mock_deps["vector_store"].get_all_chunks.return_value = []
+        mock_deps["bm25_search"].is_indexed = False
+
+        response = client.get("/health/ready")
+
+        assert response.status_code == 503
 
 
 class TestQueryEndpoint:

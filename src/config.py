@@ -57,6 +57,11 @@ class Settings:
     azure_openai_deployment: str
     azure_openai_embedding_deployment: str
 
+    # AWS Bedrock
+    aws_region: str
+    aws_bedrock_model: str
+    aws_bedrock_embedding_model: str
+
     # Groq
     groq_api_key: str
     groq_model: str
@@ -142,6 +147,11 @@ def load_settings() -> Settings:
         azure_openai_api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-01"),
         azure_openai_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT", ""),
         azure_openai_embedding_deployment=os.environ.get("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", ""),
+
+        # AWS Bedrock
+        aws_region=os.environ.get("AWS_REGION", "eu-west-1"),
+        aws_bedrock_model=os.environ.get("AWS_BEDROCK_MODEL", "anthropic.claude-sonnet-4-20250514-v1:0"),
+        aws_bedrock_embedding_model=os.environ.get("AWS_BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-text-v2:0"),
 
         # Groq
         groq_api_key=os.environ.get("GROQ_API_KEY", ""),

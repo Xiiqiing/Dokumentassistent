@@ -25,8 +25,8 @@ A RAG application that lets users ask questions about documents in any language 
 | Agent flows | Plan-and-Execute with six tools, ReAct sub-agent and conversation memory |
 | Evaluation | RAGAS metrics (faithfulness, answer relevancy, context precision) |
 | Traceability | Each answer includes source references with chunk ID and page number, plus structured logging |
-| Provider abstraction | Factory pattern that allows swapping between Ollama, OpenAI, Azure OpenAI, Anthropic and Google GenAI without touching business code |
-| Deployment | Docker Compose for local setup, Hugging Face Spaces for the public demo |
+| Provider abstraction | Factory pattern that allows swapping between Ollama, OpenAI, Azure OpenAI, AWS Bedrock, Anthropic and Google GenAI without touching business code |
+| Deployment | Docker Compose (local), Azure Container Apps, AWS ECS Fargate, Hugging Face Spaces (demo) |
 
 ### How it works
 
@@ -74,9 +74,28 @@ Configuration lives in environment variables via `src/config.py`; there are no h
 
 ### Provider support
 
-LLM and embedding backends are configured through environment variables. Supported providers are Ollama, OpenAI, Azure OpenAI, Anthropic, Google GenAI and Groq. The default setup (Ollama and HuggingFace) runs entirely locally without any API keys.
+LLM and embedding backends are configured through environment variables. Supported providers are Ollama, OpenAI, Azure OpenAI, AWS Bedrock, Anthropic, Google GenAI and Groq. The default setup (Ollama and HuggingFace) runs entirely locally without any API keys.
 
 See `.env.example` for per-provider configuration.
+
+### Cloud deployment
+
+The application is cloud-agnostic by design. Business code depends only on LangChain abstract interfaces; the concrete provider is selected at deploy time via environment variables.
+
+| Layer | Azure | AWS | Local |
+|---|---|---|---|
+| LLM / Embeddings | Azure OpenAI | Bedrock (Claude, Titan) | Ollama + HuggingFace |
+| Container registry | ACR | ECR | - |
+| Runtime | Container Apps | ECS Fargate | docker-compose |
+| CI/CD | GitHub Actions | GitHub Actions | - |
+
+GitHub Actions workflows are included for both clouds:
+
+- `ci.yml` runs lint, type check, and tests on every push and PR
+- `deploy-azure.yml` builds, pushes to ACR, and deploys to Azure Container Apps
+- `deploy-aws.yml` builds, pushes to ECR, and deploys to ECS Fargate
+
+Health probes (`/health/live` for liveness, `/health/ready` for readiness) are used by both Kubernetes and container orchestrators to manage rolling deployments.
 
 ### Try it live
 
@@ -134,6 +153,56 @@ cp .env.example .env
 docker compose up --build
 ```
 
+#### Azure Container Apps
+
+```bash
+# Login and set variables
+az login
+ACR_NAME=<your-acr-name>
+RG=<your-resource-group>
+APP_NAME=doc-assistant
+
+# Build and push
+az acr login --name $ACR_NAME
+docker build -f Dockerfile.compose -t $ACR_NAME.azurecr.io/doc-assistant:latest .
+docker push $ACR_NAME.azurecr.io/doc-assistant:latest
+
+# Deploy
+az containerapp create \
+  --name $APP_NAME \
+  --resource-group $RG \
+  --image $ACR_NAME.azurecr.io/doc-assistant:latest \
+  --target-port 8000 \
+  --env-vars LLM_PROVIDER=azure_openai \
+    AZURE_OPENAI_API_KEY=secretref:aoai-key \
+    AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com/ \
+    AZURE_OPENAI_DEPLOYMENT=<deployment> \
+    AZURE_OPENAI_EMBEDDING_DEPLOYMENT=<embedding-deployment>
+```
+
+CI/CD is automated via `.github/workflows/deploy-azure.yml`.
+
+#### AWS ECS Fargate
+
+```bash
+# Login and set variables
+AWS_REGION=eu-west-1
+ECR_REPO=<account-id>.dkr.ecr.$AWS_REGION.amazonaws.com/doc-assistant
+
+# Build and push
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
+docker build -f Dockerfile.compose -t $ECR_REPO:latest .
+docker push $ECR_REPO:latest
+
+# Deploy (update existing ECS service)
+aws ecs update-service \
+  --cluster doc-assistant \
+  --service doc-assistant \
+  --force-new-deployment
+```
+
+CI/CD is automated via `.github/workflows/deploy-aws.yml`. The task definition should set `LLM_PROVIDER=bedrock` and grant the task role Bedrock access.
+
 #### Hugging Face Spaces
 
 A `Dockerfile` and supervisor configuration are included. The Space runs Qdrant, the API and the UI behind nginx on port 7860.
@@ -158,21 +227,28 @@ src/
     reranker.py            # cross-encoder
   api/
     main.py
-    routes.py              # /query, /ingest, /health
+    routes.py              # /query, /ingest, /health/live, /health/ready
   agent/
     intent_classifier.py
     router.py              # pipeline mode (AGENT_MODE=pipeline)
     tools.py               # six retrieval tools and ToolResultStore
     plan_and_execute.py    # Plan-and-Execute agent (AGENT_MODE=react)
     memory.py              # conversation memory for multi-turn
+    session_store.py       # SQLite-backed per-session memory persistence
   evaluation/
     evaluator.py           # RAGAS metrics
   ui/
     app.py                 # Streamlit frontend
 scripts/
   ingest.py
+  evaluate.py              # RAGAS evaluation CLI
   e2e_test.py
 tests/
 docs/                      # example PDFs or texts (KU AI public documents)
+.github/
+  workflows/
+    ci.yml                 # lint + test on push/PR
+    deploy-azure.yml       # build, push ACR, deploy Container Apps
+    deploy-aws.yml         # build, push ECR, deploy ECS Fargate
 ```
 

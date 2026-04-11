@@ -14,6 +14,15 @@ def _make_chunk(chunk_id: str, text: str) -> DocumentChunk:
 class TestBM25Index:
     """Tests for index construction."""
 
+    def test_is_indexed_false_before_indexing(self) -> None:
+        bm25 = BM25Search()
+        assert bm25.is_indexed is False
+
+    def test_is_indexed_true_after_indexing(self) -> None:
+        bm25 = BM25Search()
+        bm25.index([_make_chunk("1", "hello world")])
+        assert bm25.is_indexed is True
+
     def test_index_stores_chunks(self) -> None:
         bm25 = BM25Search()
         chunks = [_make_chunk("1", "hello world"), _make_chunk("2", "foo bar")]
