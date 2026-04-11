@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from src.retrieval.embedder import Embedder
 
 EMBEDDING_DIM = 384

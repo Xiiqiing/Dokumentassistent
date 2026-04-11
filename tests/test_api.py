@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from src.api.routes import router, set_dependencies, QueryResponse, HealthResponse, ReadinessResponse
+from src.api.routes import router, set_dependencies
 from src.models import DocumentChunk, GenerationResponse, IntentType, QueryResult
 
 

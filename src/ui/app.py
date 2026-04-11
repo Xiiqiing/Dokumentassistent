@@ -268,7 +268,7 @@ elif "session_id" not in st.session_state:
 # through innerHTML never execute (HTML5 spec). We instead use a tiny iframe
 # bootstrap (via components.html) that attaches the real Umami script to the
 # parent document, so analytics track the actual Streamlit page URL.
-import streamlit.components.v1 as components
+import streamlit.components.v1 as components  # noqa: E402
 
 components.html(
     """

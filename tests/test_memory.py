@@ -1,7 +1,5 @@
 """Tests for conversation memory."""
 
-import pytest
-
 from src.agent.memory import ConversationMemory, Turn
 from src.models import DocumentChunk, QueryResult
 

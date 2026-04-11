@@ -1,6 +1,5 @@
 """Tests for the cross-encoder reranker."""
 
-import math
 from unittest.mock import MagicMock
 
 import numpy as np

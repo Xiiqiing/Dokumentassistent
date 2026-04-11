@@ -1,7 +1,5 @@
 """Tests for the Qdrant vector store."""
 
-import tempfile
-
 import pytest
 
 from src.models import ChunkStrategy, DocumentChunk

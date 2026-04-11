@@ -1,11 +1,7 @@
 """Tests for the SQLite-backed session store."""
 
 import os
-import tempfile
 
-import pytest
-
-from src.agent.memory import ConversationMemory
 from src.agent.session_store import SessionStore
 from src.models import DocumentChunk, QueryResult
 

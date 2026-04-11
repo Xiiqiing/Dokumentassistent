@@ -3,8 +3,6 @@
 from unittest.mock import MagicMock, patch
 import json
 
-import pytest
-
 from src.agent.plan_and_execute import (
     PlanAndExecuteRouter,
     PlanExecState,

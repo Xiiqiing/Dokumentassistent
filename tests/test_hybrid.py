@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.models import ChunkStrategy, DocumentChunk, QueryResult
+from src.models import DocumentChunk, QueryResult
 from src.retrieval.hybrid import HybridRetriever
 
 

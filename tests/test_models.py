@@ -1,6 +1,6 @@
 """Tests for src.models."""
 
-from src.models import DocumentChunk, QueryResult, GenerationResponse, ChunkStrategy, IntentType
+from src.models import DocumentChunk, QueryResult, GenerationResponse, ChunkStrategy, IntentType  # noqa: F401
 
 
 class TestDocumentChunk:

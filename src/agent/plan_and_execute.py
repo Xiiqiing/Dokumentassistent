@@ -20,14 +20,14 @@ import re
 from collections.abc import Generator
 from typing import TypedDict
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import Runnable
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import create_react_agent
 
 from src.agent.memory import ConversationMemory
 from src.agent.tools import ToolResultStore, detect_document_languages, make_retrieval_tools
-from src.models import GenerationResponse, IntentType, PipelineDetails, QueryResult
+from src.models import GenerationResponse, IntentType, PipelineDetails
 from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
 from src.retrieval.vector_store import VectorStore
@@ -570,7 +570,7 @@ def _parse_plan(raw: str) -> list[PlanStep]:
     if cleaned.startswith("```"):
         lines = cleaned.splitlines()
         # Remove opening and closing fences
-        lines = [l for l in lines if not l.strip().startswith("```")]
+        lines = [line for line in lines if not line.strip().startswith("```")]
         cleaned = "\n".join(lines).strip()
 
     try:

@@ -1,6 +1,6 @@
 """Tests for src.config."""
 
-from src.config import Settings, load_settings
+from src.config import Settings, load_settings  # noqa: F401
 
 
 class TestSettings:
