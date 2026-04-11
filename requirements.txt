@@ -11,7 +11,7 @@ langchain-ollama==1.0.1
 langchain-huggingface==1.2.1
 langchain-anthropic==1.4.0
 langchain-google-genai==4.2.1
-langchain-aws==0.2.17
+langchain-aws==1.4.3
 langchain-text-splitters==1.1.1
 langchain-experimental==0.4.1
 
