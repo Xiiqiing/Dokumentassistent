@@ -201,6 +201,14 @@ scripts/
   e2e_test.py
 tests/
 docs/                      # example PDFs or texts (KU AI public documents)
+infra/
+  bicep/
+    main.bicep             # Azure Container Apps (Bicep)
+    main.bicepparam        # parameter file
+  terraform/
+    main.tf                # Azure Container Apps (Terraform)
+    variables.tf           # input variables
+    outputs.tf             # deployment outputs
 .github/
   workflows/
     ci.yml                 # lint + test on push/PR

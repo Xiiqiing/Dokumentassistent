@@ -1,0 +1,13 @@
+base_name           = "kudocassist"
+location            = "northeurope"
+resource_group_name = "rg-kudocassist"
+image_tag           = "latest"
+
+llm_provider       = "google_genai"
+embedding_provider = "local"
+generation_model   = "gemini-2.5-flash"
+
+# Secrets -- pass via CLI or environment variables:
+#   export TF_VAR_google_api_key="..."
+#   export TF_VAR_openai_api_key="..."
+#   export TF_VAR_azure_openai_api_key="..."
