@@ -3,7 +3,7 @@
 ## Live demo
 Hosted on Hugging Face Spaces: [xq-dokumentassistent.hf.space](https://xq-dokumentassistent.hf.space)
 
-A RAG application that lets users ask questions about documents in any language and get answers with source citations. The system is built on open source components (LangChain, LangGraph, Qdrant, Ollama) and can run locally without API keys. It uses hybrid search with reranking, a Plan-and-Execute agent with conversation memory, and RAGAS-based evaluation of answer quality.
+A RAG application that lets users ask questions about documents in any language and get answers with source citations. Built with LangChain, LangGraph, and Qdrant, it supports multiple LLM backends (Azure OpenAI, AWS Bedrock, Ollama) switchable via environment variables, and can run fully locally without API keys. Features include hybrid search with cross-encoder reranking, two LangGraph agent modes, RAGAS-based evaluation, and CI/CD pipelines for Azure Container Apps and AWS ECS Fargate.
 
 ### Capabilities
 

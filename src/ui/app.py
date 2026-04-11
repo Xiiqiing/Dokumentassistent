@@ -160,7 +160,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "Two modes: a LangGraph Plan-and-Execute agent (default) with conversation memory for complex multi-step queries, "
             "and a predefined pipeline for lightweight models. "
             "Retrieval quality is evaluated with RAGAS. "
-            'The knowledge base contains <a href="https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs" target="_blank"> example documents</a> of university rules and regulations. Try to ask a question about it.'
+            'The knowledge base contains <a href="https://github.com/Xiiqiing/Dokumentassistent/tree/main/docs" target="_blank"> example documents</a> of university rules and regulations. Try to ask questions about it.'
         ),
         "search_label": "Ask a question ...",
         "search_placeholder": "E.g.: What are the rules for processing personal data?",
