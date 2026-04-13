@@ -1,290 +1,149 @@
 # ---------------------------------------------------------------------------
-# KU Doc Assistant - Azure Container Apps deployment (Terraform)
+# KU Doc Assistant - root composition.
+# Wires the platform, storage, and container_app modules together.
 # ---------------------------------------------------------------------------
+
+module "platform" {
+  source              = "./modules/platform"
+  base_name           = var.base_name
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+module "qdrant_storage" {
+  source                       = "./modules/storage"
+  base_name                    = var.base_name
+  location                     = module.platform.location
+  resource_group_name          = module.platform.resource_group_name
+  container_app_environment_id = module.platform.container_app_environment_id
+  share_name                   = "qdrant-data"
+  env_storage_name             = "qdrantstorage"
+  quota_gb                     = 5
+}
 
 locals {
-  clean_name = replace(var.base_name, "-", "")
+  acr_registry = {
+    server               = module.platform.acr_login_server
+    username             = module.platform.acr_admin_username
+    password_secret_name = "acr-password"
+  }
+
+  api_secrets = {
+    "acr-password"         = module.platform.acr_admin_password
+    "google-api-key"       = var.google_api_key
+    "openai-api-key"       = var.openai_api_key
+    "azure-openai-api-key" = var.azure_openai_api_key
+  }
+
+  ui_secrets = {
+    "acr-password" = module.platform.acr_admin_password
+  }
 }
 
 # ---------------------------------------------------------------------------
-# Resource Group
+# Qdrant — internal stateful service backed by ACA file-share volume
 # ---------------------------------------------------------------------------
 
-resource "azurerm_resource_group" "main" {
-  name     = var.resource_group_name
-  location = var.location
-}
+module "qdrant" {
+  source = "./modules/container_app"
 
-# ---------------------------------------------------------------------------
-# Log Analytics
-# ---------------------------------------------------------------------------
-
-resource "azurerm_log_analytics_workspace" "main" {
-  name                = "${var.base_name}-logs"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  sku                 = "PerGB2018"
-  retention_in_days   = 30
-}
-
-# ---------------------------------------------------------------------------
-# Container App Environment
-# ---------------------------------------------------------------------------
-
-resource "azurerm_container_app_environment" "main" {
-  name                       = "${var.base_name}-env"
-  location                   = azurerm_resource_group.main.location
-  resource_group_name        = azurerm_resource_group.main.name
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
-}
-
-# ---------------------------------------------------------------------------
-# Azure Container Registry
-# ---------------------------------------------------------------------------
-
-resource "azurerm_container_registry" "main" {
-  name                = "${local.clean_name}acr"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  sku                 = "Basic"
-  admin_enabled       = true
-}
-
-# ---------------------------------------------------------------------------
-# Storage Account + File Share for Qdrant persistence
-# ---------------------------------------------------------------------------
-
-resource "azurerm_storage_account" "main" {
-  name                     = "${local.clean_name}stor"
-  location                 = azurerm_resource_group.main.location
-  resource_group_name      = azurerm_resource_group.main.name
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-}
-
-resource "azurerm_storage_share" "qdrant" {
-  name               = "qdrant-data"
-  storage_account_id = azurerm_storage_account.main.id
-  quota              = 5
-}
-
-resource "azurerm_container_app_environment_storage" "qdrant" {
-  name                         = "qdrantstorage"
-  container_app_environment_id = azurerm_container_app_environment.main.id
-  account_name                 = azurerm_storage_account.main.name
-  access_key                   = azurerm_storage_account.main.primary_access_key
-  share_name                   = azurerm_storage_share.qdrant.name
-  access_mode                  = "ReadWrite"
-}
-
-# ---------------------------------------------------------------------------
-# Qdrant Container App
-# ---------------------------------------------------------------------------
-
-resource "azurerm_container_app" "qdrant" {
   name                         = "${var.base_name}-qdrant"
-  container_app_environment_id = azurerm_container_app_environment.main.id
-  resource_group_name          = azurerm_resource_group.main.name
-  revision_mode                = "Single"
+  container_name               = "qdrant"
+  container_app_environment_id = module.platform.container_app_environment_id
+  resource_group_name          = module.platform.resource_group_name
 
-  ingress {
-    external_enabled = false
-    target_port      = 6333
-    transport        = "http"
+  image            = "qdrant/qdrant:latest"
+  cpu              = 0.5
+  memory           = "1Gi"
+  target_port      = 6333
+  external_ingress = false
 
-    traffic_weight {
-      latest_revision = true
-      percentage      = 100
-    }
-  }
-
-  template {
-    min_replicas = 1
-    max_replicas = 1
-
-    container {
-      name   = "qdrant"
-      image  = "qdrant/qdrant:latest"
-      cpu    = 0.5
-      memory = "1Gi"
-
-      volume_mounts {
-        name = "qdrant-vol"
-        path = "/qdrant/storage"
-      }
-    }
-
-    volume {
-      name         = "qdrant-vol"
-      storage_name = azurerm_container_app_environment_storage.qdrant.name
-      storage_type = "AzureFile"
-    }
-  }
+  volume_mounts = [
+    { name = "qdrant-vol", path = "/qdrant/storage" }
+  ]
+  volumes = [
+    { name = "qdrant-vol", storage_name = module.qdrant_storage.env_storage_name }
+  ]
 }
 
 # ---------------------------------------------------------------------------
-# API Container App
+# API — internal FastAPI backend
 # ---------------------------------------------------------------------------
 
-resource "azurerm_container_app" "api" {
+module "api" {
+  source = "./modules/container_app"
+
   name                         = "${var.base_name}-api"
-  container_app_environment_id = azurerm_container_app_environment.main.id
-  resource_group_name          = azurerm_resource_group.main.name
-  revision_mode                = "Single"
+  container_name               = "api"
+  container_app_environment_id = module.platform.container_app_environment_id
+  resource_group_name          = module.platform.resource_group_name
 
-  secret {
-    name  = "acr-password"
-    value = azurerm_container_registry.main.admin_password
+  image            = "${module.platform.acr_login_server}/${var.base_name}-api:${var.image_tag}"
+  cpu              = 1.0
+  memory           = "2Gi"
+  target_port      = 8000
+  external_ingress = false
+  max_replicas     = 3
+
+  registry = local.acr_registry
+  secrets  = local.api_secrets
+
+  env = [
+    { name = "QDRANT_URL", value = "http://${module.qdrant.fqdn}" },
+    { name = "LLM_PROVIDER", value = var.llm_provider },
+    { name = "EMBEDDING_PROVIDER", value = var.embedding_provider },
+    { name = "GENERATION_MODEL", value = var.generation_model },
+    { name = "GOOGLE_API_KEY", secret_name = "google-api-key" },
+    { name = "OPENAI_API_KEY", secret_name = "openai-api-key" },
+    { name = "AZURE_OPENAI_API_KEY", secret_name = "azure-openai-api-key" },
+    { name = "AZURE_OPENAI_ENDPOINT", value = var.azure_openai_endpoint },
+    { name = "AZURE_OPENAI_DEPLOYMENT", value = var.azure_openai_deployment },
+    { name = "LOG_LEVEL", value = "INFO" },
+  ]
+
+  readiness_probe = {
+    path             = "/health/ready"
+    port             = 8000
+    initial_delay    = 30
+    interval_seconds = 15
   }
 
-  secret {
-    name  = "google-api-key"
-    value = var.google_api_key
-  }
-
-  secret {
-    name  = "openai-api-key"
-    value = var.openai_api_key
-  }
-
-  secret {
-    name  = "azure-openai-api-key"
-    value = var.azure_openai_api_key
-  }
-
-  registry {
-    server               = azurerm_container_registry.main.login_server
-    username             = azurerm_container_registry.main.admin_username
-    password_secret_name = "acr-password"
-  }
-
-  ingress {
-    external_enabled = false
-    target_port      = 8000
-    transport        = "http"
-
-    traffic_weight {
-      latest_revision = true
-      percentage      = 100
-    }
-  }
-
-  template {
-    min_replicas = 1
-    max_replicas = 3
-
-    container {
-      name   = "api"
-      image  = "${azurerm_container_registry.main.login_server}/${var.base_name}-api:${var.image_tag}"
-      cpu    = 1.0
-      memory = "2Gi"
-
-      env {
-        name  = "QDRANT_URL"
-        value = "http://${azurerm_container_app.qdrant.ingress[0].fqdn}"
-      }
-      env {
-        name  = "LLM_PROVIDER"
-        value = var.llm_provider
-      }
-      env {
-        name  = "EMBEDDING_PROVIDER"
-        value = var.embedding_provider
-      }
-      env {
-        name  = "GENERATION_MODEL"
-        value = var.generation_model
-      }
-      env {
-        name        = "GOOGLE_API_KEY"
-        secret_name = "google-api-key"
-      }
-      env {
-        name        = "OPENAI_API_KEY"
-        secret_name = "openai-api-key"
-      }
-      env {
-        name        = "AZURE_OPENAI_API_KEY"
-        secret_name = "azure-openai-api-key"
-      }
-      env {
-        name  = "AZURE_OPENAI_ENDPOINT"
-        value = var.azure_openai_endpoint
-      }
-      env {
-        name  = "AZURE_OPENAI_DEPLOYMENT"
-        value = var.azure_openai_deployment
-      }
-      env {
-        name  = "LOG_LEVEL"
-        value = "INFO"
-      }
-
-      readiness_probe {
-        transport        = "HTTP"
-        path             = "/health/ready"
-        port             = 8000
-        initial_delay    = 30
-        interval_seconds = 15
-      }
-
-      liveness_probe {
-        transport        = "HTTP"
-        path             = "/health"
-        port             = 8000
-        interval_seconds = 30
-      }
-    }
+  liveness_probe = {
+    path             = "/health"
+    port             = 8000
+    interval_seconds = 30
   }
 }
 
 # ---------------------------------------------------------------------------
-# UI Container App (Streamlit)
+# UI — public Streamlit frontend
 # ---------------------------------------------------------------------------
 
-resource "azurerm_container_app" "ui" {
+module "ui" {
+  source = "./modules/container_app"
+
   name                         = "${var.base_name}-ui"
-  container_app_environment_id = azurerm_container_app_environment.main.id
-  resource_group_name          = azurerm_resource_group.main.name
-  revision_mode                = "Single"
+  container_name               = "ui"
+  container_app_environment_id = module.platform.container_app_environment_id
+  resource_group_name          = module.platform.resource_group_name
 
-  secret {
-    name  = "acr-password"
-    value = azurerm_container_registry.main.admin_password
-  }
+  image            = "${module.platform.acr_login_server}/${var.base_name}-ui:${var.image_tag}"
+  cpu              = 0.5
+  memory           = "1Gi"
+  target_port      = 8501
+  external_ingress = true
+  max_replicas     = 3
 
-  registry {
-    server               = azurerm_container_registry.main.login_server
-    username             = azurerm_container_registry.main.admin_username
-    password_secret_name = "acr-password"
-  }
+  registry = local.acr_registry
+  secrets  = local.ui_secrets
 
-  ingress {
-    external_enabled = true
-    target_port      = 8501
-    transport        = "http"
+  command = [
+    "streamlit", "run", "src/ui/app.py",
+    "--server.port=8501", "--server.address=0.0.0.0",
+    "--server.headless=true", "--browser.gatherUsageStats=false",
+  ]
 
-    traffic_weight {
-      latest_revision = true
-      percentage      = 100
-    }
-  }
-
-  template {
-    min_replicas = 1
-    max_replicas = 3
-
-    container {
-      name    = "ui"
-      image   = "${azurerm_container_registry.main.login_server}/${var.base_name}-ui:${var.image_tag}"
-      cpu     = 0.5
-      memory  = "1Gi"
-      command = ["streamlit", "run", "src/ui/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true", "--browser.gatherUsageStats=false"]
-
-      env {
-        name  = "API_BASE_URL"
-        value = "http://${azurerm_container_app.api.ingress[0].fqdn}"
-      }
-    }
-  }
+  env = [
+    { name = "API_BASE_URL", value = "http://${module.api.fqdn}" },
+  ]
 }
