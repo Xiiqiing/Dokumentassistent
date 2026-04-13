@@ -1,0 +1,16 @@
+name: summarize_document
+version: v1
+description: Produce a structured summary of a single document in the knowledge base.
+template: |-
+  Produce a structured summary of the following document. Include:
+  1. Document title/topic
+  2. Key points (3-7 bullet points)
+  3. Important rules, deadlines, or requirements mentioned
+  4. Who the document applies to
+
+  Write the summary in the same language as the document.
+
+  Document ID: {document_id}
+
+  Document text:
+  {full_text}

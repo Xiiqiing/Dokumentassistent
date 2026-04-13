@@ -1,0 +1,13 @@
+name: detect_language_and_intent
+version: v1
+description: Single-call prompt for the router that detects query language and classifies intent.
+template: |-
+  You are given a user query. Do TWO things:
+  1. Detect the language of the query (reply with the language name in English, e.g. 'Danish', 'English', 'German', 'Chinese', 'Japanese').
+  2. Classify the intent into exactly one of: {valid_intents}.
+
+  Reply with EXACTLY two lines, nothing else:
+  language: <language>
+  intent: <intent>
+
+  Query: {query}

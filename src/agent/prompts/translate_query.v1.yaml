@@ -1,0 +1,7 @@
+name: translate_query
+version: v1
+description: Translate the user query into the corpus language so BM25 can match.
+template: |-
+  Translate the following text to {target}. Reply with ONLY the translated text, nothing else.
+
+  Text: {query}

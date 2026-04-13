@@ -20,6 +20,8 @@ from langgraph.graph import END, StateGraph
 
 from src.models import IntentType, GenerationResponse, PipelineDetails, QueryResult
 from src.agent.intent_classifier import IntentClassifier
+from src.agent.prompts import render_prompt
+from src.agent.token_budget import measure as _measure_tokens
 from src.agent.tools import detect_document_languages
 from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
@@ -140,6 +142,7 @@ class QueryRouter:
         *,
         translate_query: bool = True,
         document_languages: list[str] | None = None,
+        token_budget_enabled: bool = False,
     ) -> None:
         """Initialize the query router.
 
@@ -166,6 +169,7 @@ class QueryRouter:
         self._document_languages: list[str] | None = (
             list(document_languages) if document_languages else None
         )
+        self._token_budget_enabled = token_budget_enabled
         self._graph = self._build_graph()
 
     def _ensure_document_languages(self) -> list[str]:
@@ -195,16 +199,10 @@ class QueryRouter:
             Tuple of (detected_language, intent).
         """
         valid_intents = "factual, summary, comparison, procedural, unknown"
-        prompt = (
-            "You are given a user query. Do TWO things:\n"
-            "1. Detect the language of the query (reply with the language name in English, "
-            "e.g. 'Danish', 'English', 'German', 'Chinese', 'Japanese').\n"
-            "2. Classify the intent into exactly one of: "
-            f"{valid_intents}.\n\n"
-            "Reply with EXACTLY two lines, nothing else:\n"
-            "language: <language>\n"
-            "intent: <intent>\n\n"
-            f"Query: {query}"
+        prompt = render_prompt(
+            "detect_language_and_intent",
+            valid_intents=valid_intents,
+            query=query,
         )
         raw = _extract_content(self._llm_chain.invoke(prompt))
         logger.debug("Combined detection raw response: %s", raw)
@@ -266,10 +264,8 @@ class QueryRouter:
             return query
 
         target = doc_langs[0]
-        translate_prompt = (
-            f"Translate the following text to {target}. "
-            "Reply with ONLY the translated text, nothing else.\n\n"
-            f"Text: {query}"
+        translate_prompt = render_prompt(
+            "translate_query", target=target, query=query
         )
         translated = _extract_content(self._llm_chain.invoke(translate_prompt))
         logger.info("Translated query to %s: %s", target, translated)
@@ -324,13 +320,10 @@ class QueryRouter:
         Uses the LLM to generate alternative search terms while preserving
         the original meaning, then increments the retry counter.
         """
-        prompt = (
-            "The following search query did not return good results from "
-            "the document database. Rewrite it to be broader or use "
-            "different keywords while keeping the same meaning. "
-            "Reply with ONLY the rewritten query, nothing else.\n\n"
-            f"Original question: {state['query']}\n"
-            f"Failed search query: {state['retrieval_query']}"
+        prompt = render_prompt(
+            "broaden_query",
+            query=state["query"],
+            retrieval_query=state["retrieval_query"],
         )
         broadened = _extract_content(self._llm_chain.invoke(prompt))
         logger.info(
@@ -380,6 +373,7 @@ class QueryRouter:
         prompt = self._build_prompt(
             state["query"], state["intent"], context, state["user_language"]
         )
+        _measure_tokens("generate_answer", prompt, enabled=self._token_budget_enabled)
         answer = _extract_content(self._llm_chain.invoke(prompt))
         logger.info("Generated answer for intent=%s", state["intent"].value)
         return {"answer": answer}

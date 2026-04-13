@@ -110,6 +110,98 @@ def create_llm(settings: Settings) -> BaseChatModel:
             )
 
 
+# Exceptions that engage the fallback chain. Set to the broad ``Exception``
+# because real-world LLM SDK errors (openai.RateLimitError,
+# openai.APIConnectionError, httpx.ConnectError, anthropic.APIError, ...)
+# do NOT inherit from stdlib ``ConnectionError`` / ``TimeoutError`` / ``OSError``.
+# A narrower set would silently let the most common transient failures bypass
+# the fallback. Safety relies on three layers instead:
+#   1. The whole feature is opt-in via ``LLM_FALLBACK_ENABLED`` (default off).
+#   2. Every fallback activation logs a WARNING naming the destination provider.
+#   3. Startup logs the full chain at WARNING with cost / privacy reminders.
+_FALLBACK_EXCEPTIONS: tuple[type[BaseException], ...] = (Exception,)
+
+
+def _wrap_with_fallback_logging(llm: BaseChatModel, provider: str) -> BaseChatModel:
+    """Wrap ``llm`` so every invocation logs a WARNING naming the provider.
+
+    The wrapper only fires when the underlying Runnable is actually invoked,
+    which for a fallback entry means the primary (and any earlier fallbacks)
+    already failed. This gives operators a clear trail showing when data
+    leaves the primary provider — critical for the privacy-aware default of
+    this project.
+
+    Args:
+        llm: The chat model to wrap.
+        provider: Provider label shown in the log message.
+
+    Returns:
+        A Runnable that transparently delegates to ``llm``.
+    """
+
+    def _on_start(_run_obj, _config=None) -> None:  # noqa: ANN001
+        logger.warning(
+            "LLM fallback activated: routing request to provider '%s'. "
+            "Check cost / privacy implications.",
+            provider,
+        )
+
+    return llm.with_listeners(on_start=_on_start)
+
+
+def create_llm_with_fallback(settings: Settings) -> BaseChatModel:
+    """Create the generation LLM, optionally wrapping it in a fallback chain.
+
+    When ``settings.llm_fallback_enabled`` is False OR the fallback list is
+    empty, this is a drop-in equivalent of :func:`create_llm`. Otherwise the
+    primary LLM is wrapped via LangChain's ``with_fallbacks`` so that when
+    the primary raises a transient failure (network / timeout / connection),
+    each fallback provider is tried in order.
+
+    Args:
+        settings: Application settings.
+
+    Returns:
+        A BaseChatModel (primary on its own, or primary-with-fallbacks).
+    """
+    primary = create_llm(settings)
+    if not settings.llm_fallback_enabled or not settings.llm_fallback_providers:
+        return primary
+
+    fallbacks: list[BaseChatModel] = []
+    for provider in settings.llm_fallback_providers:
+        try:
+            fallback_settings = replace(settings, llm_provider=provider)
+            raw = create_llm(fallback_settings)
+        except Exception as exc:  # noqa: BLE001 — log and skip broken fallbacks
+            logger.error(
+                "Skipping LLM fallback provider '%s' due to construction error: %s",
+                provider, exc,
+            )
+            continue
+        fallbacks.append(_wrap_with_fallback_logging(raw, provider))
+
+    if not fallbacks:
+        logger.warning(
+            "LLM_FALLBACK_ENABLED is true but no fallback providers could be "
+            "constructed; running without fallback."
+        )
+        return primary
+
+    chain_repr = " -> ".join([settings.llm_provider, *settings.llm_fallback_providers])
+    logger.warning(
+        "LLM fallback chain is ACTIVE: %s. "
+        "On transient failure of the primary, requests will be routed to the "
+        "next provider. This may incur API costs and send data to third-party "
+        "providers.",
+        chain_repr,
+    )
+
+    return primary.with_fallbacks(
+        fallbacks, exceptions_to_handle=_FALLBACK_EXCEPTIONS
+    )
+
+
 _EVALUATOR_MODEL_FIELD: dict[str, str] = {
     "groq": "groq_model",
     "openai": "openai_model",

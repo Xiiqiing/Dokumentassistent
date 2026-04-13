@@ -84,6 +84,18 @@ class Settings:
     # Agent mode: "pipeline" (fixed DAG) or "react" (tool-calling ReAct loop)
     agent_mode: str
 
+    # Token budget (Stage 1: measure-only). When True, prompt sizes are
+    # logged at known injection points; truncation is NOT applied yet.
+    token_budget_enabled: bool
+
+    # LLM provider fallback. When enabled, the primary generation LLM is
+    # wrapped with LangChain's with_fallbacks across ``llm_fallback_providers``
+    # in order. DEFAULT OFF because an automatic switch from a local
+    # privacy-preserving provider (e.g. Ollama) to a cloud provider (e.g.
+    # OpenAI) has both cost and data-exfiltration implications.
+    llm_fallback_enabled: bool
+    llm_fallback_providers: tuple[str, ...]
+
 
 def _parse_bool(value: str, *, default: bool) -> bool:
     """Parse a boolean environment variable string.
@@ -180,4 +192,19 @@ def load_settings() -> Settings:
         # Agent mode: "pipeline" keeps the existing fixed DAG; "react" enables
         # the multi-step ReAct loop (requires an LLM with tool-calling support).
         agent_mode=os.environ.get("AGENT_MODE", "pipeline"),
+
+        # Token budget — measure-only logging, off by default.
+        token_budget_enabled=_parse_bool(
+            os.environ.get("TOKEN_BUDGET_ENABLED", ""), default=False
+        ),
+
+        # LLM fallback chain — off by default for privacy / cost reasons.
+        llm_fallback_enabled=_parse_bool(
+            os.environ.get("LLM_FALLBACK_ENABLED", ""), default=False
+        ),
+        llm_fallback_providers=tuple(
+            p.strip().lower()
+            for p in os.environ.get("LLM_FALLBACK_PROVIDERS", "").split(",")
+            if p.strip()
+        ),
     )

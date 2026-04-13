@@ -1,0 +1,8 @@
+name: detect_languages
+version: v1
+description: Ask the LLM to enumerate every language present across sampled corpus chunks.
+template: |-
+  You are a language detector. The text samples below come from different documents in a knowledge base. Identify ALL distinct languages present across the samples (do not list a language more than once). Reply with ONLY the language names in English, one per line, no explanation.
+
+  Samples:
+  {sample_text}

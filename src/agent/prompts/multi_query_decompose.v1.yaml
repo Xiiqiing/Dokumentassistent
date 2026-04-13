@@ -1,0 +1,9 @@
+name: multi_query_decompose
+version: v1
+description: Decompose a complex user question into 2–4 independent sub-queries for multi_query_search.
+template: |-
+  You are a search query planner. Given a complex question, decompose it into 2-4 simple, independent search queries that together cover all aspects of the question. {lang_clause}
+
+  Reply with ONLY the queries, one per line, nothing else.
+
+  Question: {question}

@@ -7,6 +7,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
+from src.agent.prompts import get_prompt
 from src.models import IntentType
 
 logger = logging.getLogger(__name__)
@@ -16,16 +17,7 @@ _THINK_UNCLOSED_RE = re.compile(r"<think>.*", re.DOTALL)
 
 _VALID_INTENTS = {intent.value for intent in IntentType}
 
-_SYSTEM_PROMPT = (
-    "You are an intent classifier. Given a user query, classify it into exactly "
-    "one of the following categories: factual, summary, comparison, procedural, unknown.\n\n"
-    "- factual: the user asks for a specific fact or piece of information.\n"
-    "- summary: the user wants a summary or overview of a topic.\n"
-    "- comparison: the user wants to compare two or more things.\n"
-    "- procedural: the user asks how to do something step by step.\n"
-    "- unknown: the query does not fit any of the above.\n\n"
-    "Respond with ONLY the category name in lowercase, nothing else."
-)
+_SYSTEM_PROMPT = get_prompt("intent_classify").template
 
 
 class IntentClassifier:

@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from langchain_core.output_parsers import StrOutputParser
 
 from src.config import load_settings
-from src.provider import create_llm, create_embeddings, create_reranker
+from src.provider import create_llm, create_llm_with_fallback, create_embeddings, create_reranker
 from src.retrieval.embedder import Embedder
 from src.retrieval.vector_store import VectorStore
 from src.retrieval.bm25_search import BM25Search
@@ -36,7 +36,17 @@ def create_app() -> FastAPI:
 
     logging.basicConfig(level=getattr(logging, settings.log_level, logging.INFO))
 
-    llm = create_llm(settings)
+    # React mode's ReAct sub-agent calls llm.bind_tools(...) internally, which
+    # RunnableWithFallbacks does not support. Fall back chain is therefore only
+    # applied in pipeline mode; in react mode we warn and use the primary only.
+    if settings.llm_fallback_enabled and settings.agent_mode == "react":
+        logger.warning(
+            "LLM_FALLBACK_ENABLED is set but AGENT_MODE=react; fallback chain "
+            "is incompatible with tool-calling and will be DISABLED for this run."
+        )
+        llm = create_llm(settings)
+    else:
+        llm = create_llm_with_fallback(settings)
     embeddings = create_embeddings(settings)
 
     embedder = Embedder(embeddings=embeddings)
@@ -83,6 +93,7 @@ def create_app() -> FastAPI:
             vector_store=vector_store,
             default_top_k=settings.top_k,
             memory=ConversationMemory(),
+            token_budget_enabled=settings.token_budget_enabled,
         )
     else:
         logger.info("Agent mode: pipeline (fixed DAG)")
@@ -94,6 +105,7 @@ def create_app() -> FastAPI:
             reranker=reranker,
             llm_chain=llm_chain,
             translate_query=settings.translate_query,
+            token_budget_enabled=settings.token_budget_enabled,
         )
 
     session_store = SessionStore(db_path=os.environ.get("SESSION_DB_PATH", "./data/sessions.db"))

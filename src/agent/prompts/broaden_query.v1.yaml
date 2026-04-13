@@ -1,0 +1,8 @@
+name: broaden_query
+version: v1
+description: Rewrite a retrieval query when the reranker confidence is low.
+template: |-
+  The following search query did not return good results from the document database. Rewrite it to be broader or use different keywords while keeping the same meaning. Reply with ONLY the rewritten query, nothing else.
+
+  Original question: {query}
+  Failed search query: {retrieval_query}

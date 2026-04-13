@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from langchain_core.runnables import Runnable
 from langchain_core.tools import tool
 
+from src.agent.prompts import render_prompt
 from src.models import QueryResult
 from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.reranker import Reranker
@@ -121,14 +122,7 @@ def detect_document_languages(
     if not sample_text:
         return []
 
-    prompt = (
-        "You are a language detector. The text samples below come from "
-        "different documents in a knowledge base. Identify ALL distinct "
-        "languages present across the samples (do not list a language more "
-        "than once). Reply with ONLY the language names in English, one per "
-        "line, no explanation.\n\n"
-        f"Samples:\n{sample_text}"
-    )
+    prompt = render_prompt("detect_languages", sample_text=sample_text)
     raw = _extract_content(llm.invoke(prompt))
 
     seen: set[str] = set()
@@ -414,12 +408,10 @@ def make_retrieval_tools(
             store.tool_calls.append(("multi_query_search", question))
 
             # Step 1: Ask LLM to decompose the question
-            decompose_prompt = (
-                "You are a search query planner. Given a complex question, "
-                "decompose it into 2-4 simple, independent search queries that "
-                f"together cover all aspects of the question. {_lang_clause}\n\n"
-                "Reply with ONLY the queries, one per line, nothing else.\n\n"
-                f"Question: {question}"
+            decompose_prompt = render_prompt(
+                "multi_query_decompose",
+                lang_clause=_lang_clause,
+                question=question,
             )
             raw = _extract_content(llm_chain.invoke(decompose_prompt))
             sub_queries = [q.strip().lstrip("0123456789.-) ") for q in raw.splitlines() if q.strip()]
@@ -490,16 +482,10 @@ def make_retrieval_tools(
             if len(full_text) > max_chars:
                 full_text = full_text[:max_chars] + "\n\n[... teksten er forkortet ... (text truncated)]"
 
-            summary_prompt = (
-                "Produce a structured summary of the following document. "
-                "Include:\n"
-                "1. Document title/topic\n"
-                "2. Key points (3-7 bullet points)\n"
-                "3. Important rules, deadlines, or requirements mentioned\n"
-                "4. Who the document applies to\n\n"
-                "Write the summary in the same language as the document.\n\n"
-                f"Document ID: {document_id}\n\n"
-                f"Document text:\n{full_text}"
+            summary_prompt = render_prompt(
+                "summarize_document",
+                document_id=document_id,
+                full_text=full_text,
             )
             summary = _extract_content(llm_chain.invoke(summary_prompt))
             return f"Resumé af {document_id}:\n\n{summary}"

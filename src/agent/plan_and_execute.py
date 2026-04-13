@@ -26,6 +26,8 @@ from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import create_react_agent
 
 from src.agent.memory import ConversationMemory
+from src.agent.prompts import get_prompt
+from src.agent.token_budget import measure as _measure_tokens
 from src.agent.tools import ToolResultStore, detect_document_languages, make_retrieval_tools
 from src.models import GenerationResponse, IntentType, PipelineDetails
 from src.retrieval.hybrid import HybridRetriever
@@ -37,60 +39,12 @@ logger = logging.getLogger(__name__)
 _MAX_STEPS = 6
 
 # ------------------------------------------------------------------
-# Prompts
+# Prompts (loaded from src/agent/prompts/*.yaml)
 # ------------------------------------------------------------------
 
-_PLANNER_PROMPT = (
-    "You are a planning assistant for the University of Copenhagen (KU) document system.\n\n"
-    "Given a user question, produce a JSON list of 1–4 steps needed to answer it.\n"
-    "Each step is an object with:\n"
-    '  - "action": one of "search", "search_within", "multi_search", '
-    '"summarize", "list_docs", "fetch_doc"\n'
-    '  - "detail": a short description of what to do (e.g. the search query, document ID)\n\n'
-    "Rules:\n"
-    "- IMPORTANT: Most questions probably only need 1 step. Only use 2+ steps when the question explicitly asks about multiple distinct topics.\n"
-    "- For simple factual questions: 1 search step is enough.\n"
-    "- For comparison questions: use multi_search or separate search steps.\n"
-    "- For document overview requests: use summarize.\n"
-    "- For questions with multiple aspects: use 2–4 separate steps.\n"
-    "- Always end with the steps needed; do NOT include a final 'answer' step.\n\n"
-    "Reply with ONLY the JSON array, nothing else. No explanation, no thinking.\n\n"
-    "Examples:\n"
-    'Question: "What is the exam policy?"\n'
-    '[{"action": "search", "detail": "KU eksamensregler"}]\n\n'
-    'Question: "Compare vacation rules for academic vs administrative staff"\n'
-    '[{"action": "search", "detail": "ferieregler videnskabeligt personale"}, '
-    '{"action": "search", "detail": "ferieregler administrativt personale"}]\n\n'
-    'Question: "Summarize the AI policy document"\n'
-    '[{"action": "summarize", "detail": "ku_ai_policy.pdf"}]\n\n'
-    'Question: "Which documents are about AI? Summarize and find the rules for written exams"\n'
-    '[{"action": "list_docs", "detail": "list all available documents"}, '
-    '{"action": "search", "detail": "AI dokumenter KU"}, '
-    '{"action": "search", "detail": "regler skriftlige opgaver eksamen GAI"}]\n\n'
-    "Now plan for this question:\n"
-)
-
-_EXECUTOR_SYSTEM = (
-    "/no_think\n"
-    "You are executing ONE step of a plan to answer a user's question about "
-    "University of Copenhagen (KU) documents.\n\n"
-    "You have retrieval tools available. Execute the step described below, "
-    "then summarise what you found in 2-3 sentences. If you find nothing "
-    "relevant, say so clearly.\n\n"
-    "Do NOT produce a final answer — just report what you found for this step."
-)
-
-_SYNTHESIZER_PROMPT = (
-    "You are a helpful assistant for administrative staff at the University "
-    "of Copenhagen (KU).\n\n"
-    "Below are the results gathered from multiple research steps. "
-    "Synthesize them into a single coherent answer to the user's original question.\n\n"
-    "Guidelines:\n"
-    "- Cite document sources using [1], [2], etc.\n"
-    "- Answer in the same language as the user's question.\n"
-    "- Be concise but thorough.\n"
-    "- If some steps found no results, acknowledge gaps honestly.\n\n"
-)
+_PLANNER_PROMPT = get_prompt("planner").template
+_EXECUTOR_SYSTEM = get_prompt("executor_system").template
+_SYNTHESIZER_PROMPT = get_prompt("synthesizer").template
 
 
 # ------------------------------------------------------------------
@@ -146,6 +100,7 @@ class PlanAndExecuteRouter:
         default_top_k: int = 5,
         memory: ConversationMemory | None = None,
         document_languages: list[str] | None = None,
+        token_budget_enabled: bool = False,
     ) -> None:
         """Initialise the Plan-and-Execute router.
 
@@ -172,6 +127,7 @@ class PlanAndExecuteRouter:
         self._document_languages: list[str] | None = (
             list(document_languages) if document_languages else None
         )
+        self._token_budget_enabled = token_budget_enabled
 
     def _ensure_document_languages(self) -> list[str]:
         """Lazily detect and cache the document corpus languages via the LLM.
@@ -202,6 +158,7 @@ class PlanAndExecuteRouter:
                 f"{history}\n\n"
             )
         prompt = _PLANNER_PROMPT + history_section + f'Question: "{state["query"]}"'
+        _measure_tokens("planner", prompt, enabled=self._token_budget_enabled)
         raw = _extract_content(self._llm.invoke(prompt))
         logger.info("Planner raw output: %s", raw)
 
@@ -284,6 +241,7 @@ class PlanAndExecuteRouter:
             f"Research results:\n{gathered}\n\n"
             f"Answer:"
         )
+        _measure_tokens("synthesizer", prompt, enabled=self._token_budget_enabled)
         answer = _extract_content(self._llm.invoke(prompt))
         logger.info("Synthesized final answer (%d chars)", len(answer))
         return {"answer": answer}
