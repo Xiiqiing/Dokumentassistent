@@ -197,7 +197,6 @@ def test_streaming_integration_with_query_router_uses_fallback(monkeypatch) -> N
     from langchain_core.messages import AIMessage
     from langchain_core.output_parsers import StrOutputParser
 
-    from src.agent.intent_classifier import IntentClassifier
     from src.agent.router import QueryRouter
     from src.models import IntentType, QueryResult, DocumentChunk
 
